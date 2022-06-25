@@ -46,7 +46,8 @@ class NeuralNetwork(nn.Module):
                 nn.ReLU(),
                 nn.Linear(512, 512),
                 nn.ReLU(),
-                nn.Linear(512, 10)
+                nn.Linear(512, 10),
+                nn.Softmax(dim=1),
         )
 
     def forward(self, x):
@@ -57,7 +58,7 @@ class NeuralNetwork(nn.Module):
 model = NeuralNetwork(w,h).to(device)
 print(model)
 
-loss_fn = nn.CrossEntropyLoss()
+loss_fn = nn.CrossEntropyLoss(reduction='sum')
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
 
 def train(dataloader, model, loss_fn, optimizer):
