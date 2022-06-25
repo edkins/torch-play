@@ -38,22 +38,26 @@ print(f"Using {device} device")
 _, _, w, h = next(iter(train_dataloader))[0].size()
 print(f"w = {w}, h = {h}")
 
+def thing():
+    # return nn.ReLU()
+    return nn.Sigmoid()
+
 class NeuralNetwork(nn.Module):
     def __init__(self, w, h):
         super(NeuralNetwork, self).__init__()
         self.display = False
         self.transforms = nn.ModuleList([
                 nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, padding=2),
-                nn.ReLU(),
+                thing(),
                 nn.AvgPool2d(kernel_size=2, stride=2),
                 nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5),
-                nn.ReLU(),
+                thing(),
                 nn.AvgPool2d(kernel_size=2, stride=2),
                 nn.Flatten(),
                 nn.Linear(5*5*16, 120),
-                nn.ReLU(),
+                thing(),
                 nn.Linear(120, 84),
-                nn.ReLU(),
+                thing(),
                 nn.Linear(84, 10),
         ])
         self.softmax = nn.Softmax(dim=1)
@@ -90,7 +94,7 @@ model = NeuralNetwork(w,h).to(device)
 print(model)
 
 loss_fn = nn.CrossEntropyLoss(reduction='sum')
-optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+optimizer = torch.optim.Adam(model.parameters())
 
 def train(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
@@ -105,6 +109,7 @@ def train(dataloader, model, loss_fn, optimizer):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        #print(list(model.parameters())[0][:5])
         if batch_num % 100 == 0:
             loss, current = loss.item(), batch_num * len(X)
             print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
@@ -130,7 +135,6 @@ correctness = []
 for t in range(epochs):
     print(f"Epoch {t+1}\n----------------------")
     #model.display = (t == 1)
-    print(list(model.parameters()))
     train(train_dataloader, model, loss_fn, optimizer)
     correct = test(test_dataloader, model, loss_fn)
     correctness.append(correct)
