@@ -5,6 +5,7 @@ from torchvision import datasets
 from torchvision.transforms import ToTensor
 
 import matplotlib.pyplot as plt
+import math
 
 def load_data(train):
     return datasets.FashionMNIST(root='data', train=train, download=True, transform=ToTensor())
@@ -40,25 +41,50 @@ print(f"w = {w}, h = {h}")
 class NeuralNetwork(nn.Module):
     def __init__(self, w, h):
         super(NeuralNetwork, self).__init__()
-        self.lenet = nn.Sequential(
+        self.display = False
+        self.transforms = nn.ModuleList([
                 nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, padding=2),
-                nn.Sigmoid(),
+                nn.ReLU(),
                 nn.AvgPool2d(kernel_size=2, stride=2),
                 nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5),
-                nn.Sigmoid(),
+                nn.ReLU(),
                 nn.AvgPool2d(kernel_size=2, stride=2),
                 nn.Flatten(),
                 nn.Linear(5*5*16, 120),
-                nn.Sigmoid(),
+                nn.ReLU(),
                 nn.Linear(120, 84),
-                nn.Sigmoid(),
+                nn.ReLU(),
                 nn.Linear(84, 10),
-        )
+        ])
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
-        logits = self.lenet(x)
-        return self.softmax(logits)
+        for i,t in enumerate(self.transforms):
+            x = t(x)
+            if self.display:
+                plt.clf()
+                for j in range(4):
+                    if len(x.size())== 2:
+                        width = math.ceil(math.sqrt(x.size()[1]))
+                        height = width
+                        extra = torch.zeros(width * height - len(x[j])).to(device)
+                        img = torch.cat((x[j], extra)).reshape((width,height)).cpu().detach()
+                        plt.subplot(4, 1, 1 + j)
+                        plt.xticks(ticks=[])
+                        plt.yticks(ticks=[])
+                        plt.imshow(img)
+                    else:
+                        _, count, width, height = x.size()
+                        for k in range(count):
+                            plt.subplot(4, count, 1 + k + j * count)
+                            plt.xticks(ticks=[])
+                            plt.yticks(ticks=[])
+                            img = x[j][k].cpu().detach()
+                            plt.imshow(img)
+                print(i, x.size(), t)
+                plt.show()
+        self.display = False
+        return self.softmax(x)
 
 model = NeuralNetwork(w,h).to(device)
 print(model)
@@ -103,6 +129,8 @@ epochs = 10
 correctness = []
 for t in range(epochs):
     print(f"Epoch {t+1}\n----------------------")
+    #model.display = (t == 1)
+    print(list(model.parameters()))
     train(train_dataloader, model, loss_fn, optimizer)
     correct = test(test_dataloader, model, loss_fn)
     correctness.append(correct)
