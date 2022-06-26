@@ -6,7 +6,7 @@ from matplotlib.style import available
 
 from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton
 from data import Library, Dataset
-from layer import InputLayer, DenseLayer, SoftMaxLayer, available_layer_types, create_layer
+from layer import InputLayer, DenseLayer, SoftMaxLayer, available_layer_types, create_layer, default_layer_type
 
 class ProjectGui:
     def __init__(self, master, project: Project, library: Library, column: int, row: int):
@@ -39,9 +39,11 @@ class NewLayerPrompt:
 
         label(self.frame, "Layer type:", column=0, row=0)
         self.layer_type_dropdown = Dropdown(self.frame, column=1, row=0, selection='name', labels=available_layer_types)
+        self.layer_type_dropdown.set(default_layer_type)
 
         label(self.frame, "Insert after:", column=0, row=1)
         self.insert_after_dropdown = Dropdown(self.frame, column=1, row=1, selection='index', labels=[str(layer) for layer in project_gui.project.layers])
+        self.insert_after_dropdown.set(project_gui.layer_selector.get())
 
     def submit(self) -> bool:
         layer_type = self.layer_type_dropdown.get()

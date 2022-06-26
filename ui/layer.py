@@ -34,6 +34,7 @@ class SoftMaxLayer(Layer):
         super().__init__(shape, shape, 'softmax')
 
 available_layer_types = ('dense', 'softmax')
+default_layer_type = 'dense'
 def create_layer(layer_type: str, shape_in: Shape, shape_out: Shape):
     if layer_type == 'dense':
         return DenseLayer(shape_in, shape_out)
