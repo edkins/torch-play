@@ -3,7 +3,13 @@ from tkinter import ttk
 from typing import Sequence, Literal
 
 class ButtonSet:
-    def __init__(self, master: tk.Widget, column: int, row: int, vertical: bool, selection:Literal['name','index'], onchange: callable=lambda value:None):
+    def __init__(self,
+            master: tk.Widget,
+            column: int, row: int,
+            vertical: bool,
+            selection: Literal['name','index'],
+            labels: Sequence[str],
+            onchange: callable=lambda value:None):
         self.onchange = onchange
         self.frame = tk.Frame(master)
         self.frame.grid(column=column, row=row)
@@ -20,6 +26,7 @@ class ButtonSet:
             raise ValueError(f'Invalid selection type: {self.selection}')
 
         self.vertical = vertical
+        self.set_labels(labels)
 
     def set_labels(self, labels: Sequence[str]):
         labels = tuple(labels)
@@ -40,15 +47,25 @@ class ButtonSet:
                     button.grid(column=i, row=0)
 
 class ButtonColumn(ButtonSet):
-    def __init__(self, master: tk.Widget, column: int, row: int, selection:Literal['name','index'], onchange: callable=lambda value:None):
-        super().__init__(master, column=column, row=row, vertical=True, selection=selection, onchange=onchange)
+    def __init__(self,
+            master: tk.Widget,
+            column: int, row: int,
+            selection: Literal['name','index'],
+            labels: Sequence[str],
+            onchange: callable=lambda value:None):
+        super().__init__(master, column=column, row=row, vertical=True, selection=selection, labels=labels, onchange=onchange)
 
 class ButtonRow(ButtonSet):
-    def __init__(self, master: tk.Widget, column: int, row: int, selection:Literal['name','index'], onchange: callable=lambda value:None):
-        super().__init__(master, column=column, row=row, vertical=False, selection=selection, onchange=onchange)
+    def __init__(self,
+            master: tk.Widget,
+            column: int, row: int,
+            selection: Literal['name','index'],
+            labels: Sequence[str],
+            onchange: callable=lambda value:None):
+        super().__init__(master, column=column, row=row, vertical=False, selection=selection, labels=labels, onchange=onchange)
 
 class Dropdown:
-    def __init__(self, master: tk.Widget, column: int, row: int, onchange: callable=lambda value:None):
+    def __init__(self, master: tk.Widget, column: int, row: int, labels:Sequence[str]=(), onchange: callable=lambda value:None):
         self.onchange = onchange
         self.master = master
         self.labels = ()
@@ -56,32 +73,13 @@ class Dropdown:
         self.combo = ttk.Combobox(master, textvariable=self.selected, state='readonly', values=self.labels)
         self.combo.grid(column=column, row=row)
         self.selected.trace_add('write', lambda a,b,c:self.onchange(self.selected.get()))
+        self.set_labels(labels)
     
     def set_labels(self, labels: Sequence[str]):
         labels = tuple(labels)
         if self.labels != labels:
             self.combo.config(values=labels)
             self.labels = labels
-
-class Hider:
-    def __init__(self, master: tk.Widget, func: callable, column: int, row: int):
-        self.master = master
-        self.func = func
-        self.frame = None
-        self.column = column
-        self.row = row
-        self.gui = None
-
-    def set_visibility(self, visible: bool, **kwargs):
-        was_visible = self.frame != None
-        if visible and not was_visible:
-            self.frame = tk.Frame(self.master)
-            self.frame.grid(column=self.column, row=self.row)
-            self.gui = self.func(master=self.frame, **kwargs)
-        elif not visible and was_visible:
-            self.frame.destroy()
-            self.frame = None
-            self.gui = None
 
 class PrompterButton:
     def __init__(self, master: tk.Widget, text: str, window_title: str, column: int, row: int, command: callable, validator: callable):

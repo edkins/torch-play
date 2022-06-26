@@ -1,22 +1,39 @@
 import tkinter as tk
 from typing import Optional
-from gui_helpers import ButtonColumn, Hider, PrompterButton, tkdump
+from gui_helpers import ButtonColumn, PrompterButton, frame
 from project import Project, ProjectGui
 from data import Library
 
-class Portfolio:
-    def __init__(self, library: Library):
-        self.projects = []
-        self.library = library
+class Placeholder:
+    def __init__(self, master: tk.Widget, column: int, row: int):
+        self.frame = frame(master, column=column, row=row)
+        self.label = tk.Label(self.frame, text='Click "New" to start a project')
+        self.label.grid(column=0, row=0)
 
-    def gui_create(self, master: tk.Widget):
-        self.master = master
-        self.left_frame = tk.Frame(master)
-        self.left_frame.grid(column=0, row=0)
-        self.main_hider = Hider(master, func=ProjectGui, column=1, row=0)
+    def save(self):
+        pass
+
+    def destroy(self):
+        self.frame.destroy()
+
+class PortfolioGui:
+    def __init__(self, master: tk.Widget, library: Library, column: int, row: int, projects:list[Project] = [], selected_project_name:str = ''):
+        self.projects = projects
+        self.selected_project_name = selected_project_name
+        self.library = library
+        self.frame = frame(master, column=column, row=row)
+
+        self.left_frame = frame(self.frame, column=0, row=0)
         self.new_button = PrompterButton(self.left_frame, text='New', window_title='New project', command=self.new_project, validator = self.validate_new_project_name, column=0, row=0)
-        self.buttons = ButtonColumn(self.left_frame, column=0, row=1, selection='name', onchange=lambda value:self.gui_update())
-        self.gui_update()
+        self.buttons = ButtonColumn(
+            self.left_frame,
+            column=0, row=1,
+            selection='name',
+            labels=[project.name for project in self.projects],
+            onchange=self.select_project)
+
+        self.main_frame = Placeholder(self.frame, column=1, row=0)
+        self.select_project(selected_project_name)
     
     def get_project_with_name(self, name: str) -> Optional[Project]:
         for project in self.projects:
@@ -24,27 +41,22 @@ class Portfolio:
                 return project
         return None
 
-    def gui_update(self):
-        self.buttons.set_labels([project.name for project in self.projects])
-        proj = self.get_project_with_name(self.buttons.selected.get())
-        self.main_hider.set_visibility(
-            proj != None,
-            on_dataset_change = self.set_dataset_name,
-            on_layer_change = self.set_layer_index,
-        )
-        if proj != None and self.main_hider.gui != None:  # why is the main_hider.gui None sometimes?
-            proj.gui_update(self.main_hider.gui, self.library)
+    def select_project(self, project_name: str):
+        self.selected_project_name = project_name
+        self.buttons.selected.set(project_name)
+        project = self.get_project_with_name(project_name)
 
-    def set_dataset_name(self, name: str):
-        self.get_project_with_name(self.buttons.selected.get()).dataset = self.library.get_dataset_with_name(name)
-
-    def set_layer_index(self, index: int):
-        self.get_project_with_name(self.buttons.selected.get()).layer_index = index
+        self.main_frame.save()
+        self.main_frame.destroy()
+        if project == None:
+            self.main_frame = Placeholder(self.frame, column=1, row=0)
+        else:
+            self.main_frame = ProjectGui(self.frame, project, self.library, column=1, row=0)
 
     def new_project(self, name: str):
         self.projects.append(Project(name=name, dataset=self.library.datasets[0]))
-        self.buttons.selected.set(name)
-        self.gui_update()
+        self.buttons.set_labels([project.name for project in self.projects])
+        self.select_project(name)
 
     def validate_new_project_name(self, name: str):
         return name != '' and self.get_project_with_name(name) == None
