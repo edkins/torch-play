@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from matplotlib.style import available
 
-from gui_helpers import Dropdown, frame, label, ButtonRow, PrompterButton
+from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton
 from data import Library, Dataset
 from layer import InputLayer, DenseLayer, SoftMaxLayer, available_layer_types, create_layer
 
@@ -14,19 +14,15 @@ class ProjectGui:
         self.library = library
         self.frame = frame(master, column=column, row=row)
         
-        self.frame_0 = frame(self.frame, column=0, row=0)
-        self.project_heading = tk.Label(self.frame_0, text=project.name)
-        self.project_heading.grid(column=0, row=0)
-
-        self.frame_1 = frame(self.frame, column=0, row=1)
-        label(self.frame_1, text='Dataset:', column=0, row=0)
-        self.dataset_dropdown = Dropdown(self.frame_1, column=1, row=0, selection='name', labels=library.options())
+        top_frame = frame(self.frame, column=0, row=0, columnspan=2)
+        label(top_frame, text='Dataset:', column=0, row=0)
+        self.dataset_dropdown = Dropdown(top_frame, column=1, row=0, selection='name', labels=library.options())
         self.dataset_dropdown.set(project.dataset.name)
 
-        self.frame_2 = frame(self.frame, column=0, row=2)
-        label(self.frame_2, text='Layer:', column=0, row=0)
-        self.new_layer_button = PrompterButton(self.frame_2, column=1, row=0, text='New', window_title='New layer', prompt=NewLayerPrompt, project_gui=self)
-        self.layer_selector = ButtonRow(self.frame_2, column=2, row=0, selection='index', labels=[str(layer) for layer in project.layers])
+        left_frame = frame(self.frame, column=0, row=1)
+        label(left_frame, text='Layer:', column=0, row=0)
+        self.new_layer_button = PrompterButton(left_frame, column=0, row=1, text='New', window_title='New layer', prompt=NewLayerPrompt, project_gui=self)
+        self.layer_selector = ButtonColumn(left_frame, column=0, row=2, selection='index', labels=[str(layer) for layer in project.layers])
         self.layer_selector.set(project.layer_index)
 
     def save(self):

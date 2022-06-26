@@ -48,7 +48,8 @@ class ButtonSet:
             self.labels = labels
             for i, button in enumerate(self.buttons):
                 if self.vertical:
-                    button.grid(column=0, row=i)
+                    # Stretch horizontally
+                    button.grid(column=0, row=i, sticky=tk.W + tk.E)
                 else:
                     button.grid(column=i, row=0)
 
@@ -175,9 +176,9 @@ def tkdump(widget, depth=0):
     for child in widget.grid_slaves():
         tkdump(child, depth+1)
 
-def frame(master: tk.Widget, column: int, row: int):
+def frame(master: tk.Widget, column: int, row: int, columnspan: int=1, rowspan: int=1):
     frame = tk.Frame(master)
-    frame.grid(column=column, row=row)
+    frame.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan)
     return frame
 
 def label(master: tk.Widget, text: str, column: int, row: int):
