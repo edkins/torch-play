@@ -4,7 +4,7 @@ from tkinter import ttk
 
 from matplotlib.style import available
 
-from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton
+from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton, Picture
 from data import Library, Dataset
 from layer import InputLayer, DenseLayer, SoftMaxLayer, available_layer_types, create_layer, default_layer_type
 
@@ -24,6 +24,10 @@ class ProjectGui:
         self.new_layer_button = PrompterButton(left_frame, column=0, row=1, text='New', window_title='New layer', prompt=NewLayerPrompt, project_gui=self)
         self.layer_selector = ButtonColumn(left_frame, column=0, row=2, selection='index', labels=[str(layer) for layer in project.layers])
         self.layer_selector.set(project.layer_index)
+
+        right_frame = frame(self.frame, column=1, row=1)
+        self.picture = Picture(right_frame, column=0, row=0)
+        self.picture.set(project.dataset.get_image(0))
 
     def save(self):
         self.project.dataset = self.library.get_dataset_with_name(self.dataset_dropdown.get())

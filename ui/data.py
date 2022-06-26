@@ -37,11 +37,17 @@ class Dataset:
         return (torch.utils.data.DataLoader(self.train, batch_size=batch_size),
                 torch.utils.data.DataLoader(self.test, batch_size=batch_size))
 
-    def input_shape(self):
+    def input_shape(self) -> Shape:
         return Shape(self.width, self.height, self.channels)
 
-    def output_shape(self):
+    def output_shape(self) -> Shape:
         return Shape(1, 1, self.labels)
+
+    def get_image(self, index: int):
+        if self.channels == 1:
+            return (self.train[0][0][0,:,:].detach() * 255).byte()
+        else:
+            raise NotImplementedError("Only single channel images are currently supported.")
 
 # Represents a collection of datasets
 class Library:

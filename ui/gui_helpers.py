@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from typing import Sequence, Literal
+from PIL import Image, ImageTk
 
 class ButtonSet:
     def __init__(self,
@@ -185,3 +186,21 @@ def label(master: tk.Widget, text: str, column: int, row: int):
     label = tk.Label(master, text=text)
     label.grid(column=column, row=row)
     return label
+
+class Picture:
+    def __init__(self, master: tk.Widget, column: int, row: int):
+        self.label = tk.Label(master)
+        self.label.grid(column=column, row=row)
+        self.pil_image = None
+        self.tk_image = None
+    
+    def set(self, tensor):
+        if len(tensor.size()) == 2:
+            self.pil_image = Image.fromarray(tensor.to('cpu').numpy(), mode='L')
+        elif len(tensor.size()) == 3:
+            self.pil_image = Image.fromarray(tensor.to('cpu').numpy(), mode='RGB')
+        else:
+            raise ValueError(f'Invalid tensor size: {tensor.size()}')
+        self.tk_image = ImageTk.PhotoImage(self.pil_image.resize((400, 400), Image.NEAREST))
+        #self.label.config(image=tk.PhotoImage(data=tensor.to_pil().tobytes()))
+        self.label.config(image=self.tk_image)
