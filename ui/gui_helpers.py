@@ -3,29 +3,34 @@ from tkinter import ttk
 from typing import Sequence
 
 class ButtonColumn:
-    def __init__(self, master: tk.Widget, column: int, row: int):
-        self.frame = tk.Frame(master).grid(column=column, row=row)
+    def __init__(self, master: tk.Widget, column: int, row: int, onchange: callable=lambda value:None):
+        self.onchange = onchange
+        self.frame = tk.Frame(master)
+        self.frame.grid(column=column, row=row)
         self.buttons = []
         self.labels = ()
         self.selected = tk.StringVar(master)
+        self.selected.trace_add('write', lambda a,b,c:self.onchange(self.selected.get()))
 
     def set_labels(self, labels: Sequence[str]):
         labels = tuple(labels)
         if self.labels != labels:
             for button in self.buttons:
                 button.destroy()
-            self.buttons = [tk.Radiobutton(self.frame, text=label, indicatoron=0, value=label) for label in labels]
+            self.buttons = [tk.Radiobutton(self.frame, text=label, indicatoron=0, value=label, variable=self.selected) for label in labels]
             self.labels = labels
             for i, button in enumerate(self.buttons):
                 button.grid(column=0, row=i)
 
 class Dropdown:
-    def __init__(self, master: tk.Widget, column: int, row: int):
+    def __init__(self, master: tk.Widget, column: int, row: int, onchange: callable=lambda value:None):
+        self.onchange = onchange
         self.master = master
         self.labels = ()
         self.selected = tk.StringVar(master)
         self.combo = ttk.Combobox(master, textvariable=self.selected, state='readonly', values=self.labels)
         self.combo.grid(column=column, row=row)
+        self.combo.bind('<<ComboboxSelected>>', lambda event: self.onchange(self.selected.get()))
     
     def set_labels(self, labels: Sequence[str]):
         labels = tuple(labels)
@@ -40,21 +45,24 @@ class Hider:
         self.frame = None
         self.column = column
         self.row = row
+        self.gui = None
 
     def set_visibility(self, visible: bool):
         was_visible = self.frame != None
         if visible and not was_visible:
             self.frame = tk.Frame(self.master)
             self.frame.grid(column=self.column, row=self.row)
-            self.func(self.frame)
+            self.gui = self.func(self.frame)
         elif not visible and was_visible:
             self.frame.destroy()
             self.frame = None
+            self.gui = None
 
 class PrompterButton:
-    def __init__(self, master: tk.Widget, text: str, column: int, row: int, command: callable, validator: callable):
+    def __init__(self, master: tk.Widget, text: str, window_title: str, column: int, row: int, command: callable, validator: callable):
         self.master = master
         self.text = text
+        self.window_title = window_title
         self.command = command
         self.validator = validator
         self.button = tk.Button(master, text=text, command=self.click)
@@ -66,7 +74,7 @@ class PrompterButton:
         if self.win != None:
             self.win.destroy()
         self.win = tk.Toplevel(self.master)
-        self.win.title(self.text)
+        self.win.title(self.window_title)
         self.entry = tk.Entry(self.win)
         self.entry.grid(column=0, row=0)
         button = tk.Button(self.win, text='OK', command=self.click_ok)
@@ -95,3 +103,16 @@ class PrompterButton:
         self.win.destroy()
         self.win = None
         self.entry = None
+
+def tkgridinfo(widget):
+    try:
+        info = widget.grid_info()
+        return f'{info["column"]},{info["row"]}'
+    except AttributeError:
+        return 'x'
+
+def tkdump(widget, depth=0):
+    print(' ' * depth + str(widget) + ' -- ' + tkgridinfo(widget))
+    for child in widget.grid_slaves():
+        tkdump(child, depth+1)
+
