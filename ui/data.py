@@ -50,10 +50,13 @@ class Library:
             #Dataset("CIFAR100", datasets.CIFAR100(root='data', train=True, download=True, transform=ToTensor()), datasets.CIFAR100(root='data', train=False, download=True, transform=ToTensor()), ["apple", "aquarium fish", "baby", "bear", "beaver", "bed", "bee", "beetle", "bicycle", "bott
         ])
 
-    def gui_chooser(self, master: tk.Widget, variable: IntVar) -> tk.Widget:
-        chooser = ttk.Frame(master)
-        # Pack buttons horizontally
-        for i, dataset in enumerate(self.datasets):
-            tk.Radiobutton(chooser, text=dataset.name, variable=variable, value=i, indicatoron=0).pack(side=tk.LEFT)
-        chooser.pack(side=tk.TOP)
-        return chooser
+    # def gui_chooser(self, master: tk.Widget, variable: IntVar) -> tk.Widget:
+    #     chooser = ttk.Frame(master)
+    #     # Pack buttons horizontally
+    #     for i, dataset in enumerate(self.datasets):
+    #         tk.Radiobutton(chooser, text=dataset.name, variable=variable, value=i, indicatoron=0).pack(side=tk.LEFT)
+    #     chooser.pack(side=tk.TOP)
+    #     return chooser
+
+    def options(self) -> list[str]:
+        return [dataset.name for dataset in self.datasets]

@@ -1,12 +1,11 @@
 import tkinter
-import data
-
-lib = data.Library.build()
+from data import Library
+from portfolio import Portfolio
 
 win = tkinter.Tk()
-win.geometry('500x200')
-dataset_idx = tkinter.IntVar(value=0)
+win.geometry('1000x800')
 
-lib.gui_chooser(win, dataset_idx)
-
+lib = Library.build()
+portfolio = Portfolio(lib)
+portfolio.gui_create(win)
 win.mainloop()
