@@ -43,7 +43,7 @@ class PortfolioGui:
 
     def select_project(self, project_name: str):
         self.selected_project_name = project_name
-        self.buttons.selected.set(project_name)
+        self.buttons.set(project_name)
         project = self.get_project_with_name(project_name)
 
         self.main_frame.save()

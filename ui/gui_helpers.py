@@ -17,16 +17,22 @@ class ButtonSet:
         self.labels = ()
         self.selection = selection
         if self.selection == 'name':
-            self.selected = tk.StringVar(master)
-            self.selected.trace_add('write', lambda a,b,c:self.onchange(self.selected.get()))
+            self._selected = tk.StringVar(master)
+            self._selected.trace_add('write', lambda a,b,c:self.onchange(self._selected.get()))
         elif self.selection == 'index':
-            self.selected = tk.IntVar(master)
-            self.selected.trace_add('write', lambda a,b,c:self.onchange(self.selected.get()))
+            self._selected = tk.IntVar(master)
+            self._selected.trace_add('write', lambda a,b,c:self.onchange(self._selected.get()))
         else:
             raise ValueError(f'Invalid selection type: {self.selection}')
 
         self.vertical = vertical
         self.set_labels(labels)
+
+    def get(self) -> str | int:
+        return self._selected.get()
+
+    def set(self, value: str | int):
+        self._selected.set(value)
 
     def set_labels(self, labels: Sequence[str]):
         labels = tuple(labels)
@@ -35,9 +41,9 @@ class ButtonSet:
                 button.destroy()
 
             if self.selection == 'name':
-                self.buttons = [tk.Radiobutton(self.frame, text=label, indicatoron=0, value=label, variable=self.selected) for label in labels]
+                self.buttons = [tk.Radiobutton(self.frame, text=label, indicatoron=0, value=label, variable=self._selected) for label in labels]
             elif self.selection == 'index':
-                self.buttons = [tk.Radiobutton(self.frame, text=label, indicatoron=0, value=i, variable=self.selected) for i, label in enumerate(labels)]
+                self.buttons = [tk.Radiobutton(self.frame, text=label, indicatoron=0, value=i, variable=self._selected) for i, label in enumerate(labels)]
 
             self.labels = labels
             for i, button in enumerate(self.buttons):
@@ -65,14 +71,15 @@ class ButtonRow(ButtonSet):
         super().__init__(master, column=column, row=row, vertical=False, selection=selection, labels=labels, onchange=onchange)
 
 class Dropdown:
-    def __init__(self, master: tk.Widget, column: int, row: int, labels:Sequence[str]=(), onchange: callable=lambda value:None):
+    def __init__(self, master: tk.Widget, column: int, row: int, selection:Literal['name','index'], labels:Sequence[str]=(), onchange: callable=lambda value:None):
         self.onchange = onchange
         self.master = master
         self.labels = ()
-        self.selected = tk.StringVar(master)
-        self.combo = ttk.Combobox(master, textvariable=self.selected, state='readonly', values=self.labels)
+        self.selection = selection
+        self._selected = tk.StringVar(master)
+        self.combo = ttk.Combobox(master, textvariable=self._selected, state='readonly', values=self.labels)
         self.combo.grid(column=column, row=row)
-        self.selected.trace_add('write', lambda a,b,c:self.onchange(self.selected.get()))
+        self._selected.trace_add('write', lambda a,b,c:self.onchange(self._selected.get()))
         self.set_labels(labels)
     
     def set_labels(self, labels: Sequence[str]):
@@ -80,6 +87,22 @@ class Dropdown:
         if self.labels != labels:
             self.combo.config(values=labels)
             self.labels = labels
+
+    def set(self, value: str | int):
+        if self.selection == 'name':
+            self._selected.set(value)
+        elif self.selection == 'index':
+            self.combo.current(value)
+        else:
+            raise ValueError(f'Invalid selection type: {self.selection}')
+
+    def get(self) -> str | int:
+        if self.selection == 'name':
+            return self._selected.get()
+        elif self.selection == 'index':
+            return self.combo.current()
+        else:
+            raise ValueError(f'Invalid selection type: {self.selection}')
 
 class TextPrompt:
     def __init__(self, master: tk.Widget, column: int, row: int, validator: callable, command: callable):
