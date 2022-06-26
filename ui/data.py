@@ -2,9 +2,8 @@ from __future__ import annotations
 import torch
 from torchvision import datasets
 from torchvision.transforms import ToTensor
-import tkinter as tk
-from tkinter import IntVar, ttk
 from layer import Shape
+import numpy as np
 
 # name: name of the dataset
 # train: The training data, a torch.utils.data.Dataset
@@ -43,9 +42,9 @@ class Dataset:
     def output_shape(self) -> Shape:
         return Shape(1, 1, self.labels)
 
-    def get_image(self, index: int):
+    def get_image(self, index: int) -> np.ndarray:
         if self.channels == 1:
-            return (self.train[0][0][0,:,:].detach() * 255).byte()
+            return (self.train[0][0][0,:,:].detach() * 255).byte().to('cpu').numpy()
         else:
             raise NotImplementedError("Only single channel images are currently supported.")
 

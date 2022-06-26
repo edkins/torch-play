@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Sequence, Literal
 from PIL import Image, ImageTk
+import numpy as np
 
 class ButtonSet:
     def __init__(self,
@@ -194,11 +195,11 @@ class Picture:
         self.pil_image = None
         self.tk_image = None
     
-    def set(self, tensor):
-        if len(tensor.size()) == 2:
-            self.pil_image = Image.fromarray(tensor.to('cpu').numpy(), mode='L')
-        elif len(tensor.size()) == 3:
-            self.pil_image = Image.fromarray(tensor.to('cpu').numpy(), mode='RGB')
+    def set(self, array: np.ndarray):
+        if len(array.shape) == 2:
+            self.pil_image = Image.fromarray(array, mode='L')
+        elif len(array.shape) == 3:
+            self.pil_image = Image.fromarray(array, mode='RGB')
         else:
             raise ValueError(f'Invalid tensor size: {tensor.size()}')
         self.tk_image = ImageTk.PhotoImage(self.pil_image.resize((400, 400), Image.NEAREST))
