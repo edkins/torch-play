@@ -1,6 +1,6 @@
 import tkinter as tk
 from typing import Optional
-from gui_helpers import ButtonColumn, PrompterButton, frame
+from gui_helpers import ButtonColumn, PrompterButton, TextPrompt, frame
 from project import Project, ProjectGui
 from data import Library
 
@@ -24,7 +24,7 @@ class PortfolioGui:
         self.frame = frame(master, column=column, row=row)
 
         self.left_frame = frame(self.frame, column=0, row=0)
-        self.new_button = PrompterButton(self.left_frame, text='New', window_title='New project', command=self.new_project, validator = self.validate_new_project_name, column=0, row=0)
+        self.new_button = PrompterButton(self.left_frame, column=0, row=0, text='New', window_title='New project', prompt=TextPrompt, command=self.new_project, validator = self.validate_new_project_name)
         self.buttons = ButtonColumn(
             self.left_frame,
             column=0, row=1,

@@ -4,6 +4,7 @@ from portfolio import PortfolioGui
 
 win = tkinter.Tk()
 win.geometry('1000x800')
+win.title('Machine learning visualizer')
 
 lib = Library.build()
 portfolio = PortfolioGui(win, lib, column=0, row=0)

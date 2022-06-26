@@ -81,51 +81,64 @@ class Dropdown:
             self.combo.config(values=labels)
             self.labels = labels
 
+class TextPrompt:
+    def __init__(self, master: tk.Widget, column: int, row: int, validator: callable, command: callable):
+        self.validator = validator
+        self.command = command
+        self.frame = frame(master, column=column, row=row)
+        self.entry = tk.Entry(self.frame)
+        self.entry.grid(column=0, row=0)
+        self.message = label(self.frame, text='', column=0, row=1)
+        self.entry.focus_set()
+
+    def submit(self) -> bool:
+        value = self.entry.get()
+        if self.validator(value):
+            self.command(value)
+            return True
+        else:
+            self.message.config(text='Invalid value')
+            return False
+
 class PrompterButton:
-    def __init__(self, master: tk.Widget, text: str, window_title: str, column: int, row: int, command: callable, validator: callable):
+    def __init__(self, master: tk.Widget, text: str, window_title: str, column: int, row: int, prompt: callable, **kwargs):
         self.master = master
         self.text = text
         self.window_title = window_title
-        self.command = command
-        self.validator = validator
+        self.prompt = prompt
         self.button = tk.Button(master, text=text, command=self.click)
         self.button.grid(column=column, row=row)
         self.win = None
-        self.entry = None
+        self.prompt_frame = None
+        self.kwargs = kwargs
 
     def click(self):
         if self.win != None:
             self.win.destroy()
         self.win = tk.Toplevel(self.master)
         self.win.title(self.window_title)
-        self.entry = tk.Entry(self.win)
-        self.entry.grid(column=0, row=0)
+        self.prompt_frame = self.prompt(master=self.win, column=0, row=0, **self.kwargs)
         button = tk.Button(self.win, text='OK', command=self.click_ok)
         button.grid(column=1, row=0)
         cancel = tk.Button(self.win, text='Cancel', command=self.click_cancel)
         cancel.grid(column=2, row=0)
         self.message = tk.Label(self.win, text='')
         self.message.grid(column=3, row=0)
-        self.entry.focus_set()
         # Press OK button when enter is pressed
-        self.entry.bind('<Return>', lambda event: self.click_ok())
+        self.win.bind('<Return>', lambda event: self.click_ok())
         # Press Cancel button when escape is pressed
-        self.entry.bind('<Escape>', lambda event: self.click_cancel())
+        self.win.bind('<Escape>', lambda event: self.click_cancel())
 
     def click_ok(self):
-        value = self.entry.get()
-        if self.validator(value):
+        if self.prompt_frame.submit():
             self.win.destroy()
             self.win = None
-            self.entry = None
-            self.command(value)
-        else:
-            self.message.config(text='Invalid value')
+            self.prompt_frame = None
 
     def click_cancel(self):
         self.win.destroy()
         self.win = None
-        self.entry = None
+        self.prompt_frame = None
 
 def tkgridinfo(widget):
     try:
