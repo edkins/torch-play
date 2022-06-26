@@ -4,6 +4,7 @@ from torchvision import datasets
 from torchvision.transforms import ToTensor
 import tkinter as tk
 from tkinter import IntVar, ttk
+from layer import Shape
 
 # name: name of the dataset
 # train: The training data, a torch.utils.data.Dataset
@@ -36,6 +37,12 @@ class Dataset:
         return (torch.utils.data.DataLoader(self.train, batch_size=batch_size),
                 torch.utils.data.DataLoader(self.test, batch_size=batch_size))
 
+    def input_shape(self):
+        return Shape(self.width, self.height, self.channels)
+
+    def output_shape(self):
+        return Shape(1, 1, self.labels)
+
 # Represents a collection of datasets
 class Library:
     def __init__(self, datasets: list[Dataset]):
@@ -60,3 +67,9 @@ class Library:
 
     def options(self) -> list[str]:
         return [dataset.name for dataset in self.datasets]
+
+    def get_dataset_with_name(self, name: str) -> Dataset:
+        for dataset in self.datasets:
+            if dataset.name == name:
+                return dataset
+        raise ValueError(f"No dataset with name {name}")

@@ -1,26 +1,51 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Sequence
+from typing import Sequence, Literal
 
-class ButtonColumn:
-    def __init__(self, master: tk.Widget, column: int, row: int, onchange: callable=lambda value:None):
+class ButtonSet:
+    def __init__(self, master: tk.Widget, column: int, row: int, vertical: bool, selection:Literal['name','index'], onchange: callable=lambda value:None):
         self.onchange = onchange
         self.frame = tk.Frame(master)
         self.frame.grid(column=column, row=row)
         self.buttons = []
         self.labels = ()
-        self.selected = tk.StringVar(master)
-        self.selected.trace_add('write', lambda a,b,c:self.onchange(self.selected.get()))
+        self.selection = selection
+        if self.selection == 'name':
+            self.selected = tk.StringVar(master)
+            self.selected.trace_add('write', lambda a,b,c:self.onchange(self.selected.get()))
+        elif self.selection == 'index':
+            self.selected = tk.IntVar(master)
+            self.selected.trace_add('write', lambda a,b,c:self.onchange(self.selected.get()))
+        else:
+            raise ValueError(f'Invalid selection type: {self.selection}')
+
+        self.vertical = vertical
 
     def set_labels(self, labels: Sequence[str]):
         labels = tuple(labels)
         if self.labels != labels:
             for button in self.buttons:
                 button.destroy()
-            self.buttons = [tk.Radiobutton(self.frame, text=label, indicatoron=0, value=label, variable=self.selected) for label in labels]
+
+            if self.selection == 'name':
+                self.buttons = [tk.Radiobutton(self.frame, text=label, indicatoron=0, value=label, variable=self.selected) for label in labels]
+            elif self.selection == 'index':
+                self.buttons = [tk.Radiobutton(self.frame, text=label, indicatoron=0, value=i, variable=self.selected) for i, label in enumerate(labels)]
+
             self.labels = labels
             for i, button in enumerate(self.buttons):
-                button.grid(column=0, row=i)
+                if self.vertical:
+                    button.grid(column=0, row=i)
+                else:
+                    button.grid(column=i, row=0)
+
+class ButtonColumn(ButtonSet):
+    def __init__(self, master: tk.Widget, column: int, row: int, selection:Literal['name','index'], onchange: callable=lambda value:None):
+        super().__init__(master, column=column, row=row, vertical=True, selection=selection, onchange=onchange)
+
+class ButtonRow(ButtonSet):
+    def __init__(self, master: tk.Widget, column: int, row: int, selection:Literal['name','index'], onchange: callable=lambda value:None):
+        super().__init__(master, column=column, row=row, vertical=False, selection=selection, onchange=onchange)
 
 class Dropdown:
     def __init__(self, master: tk.Widget, column: int, row: int, onchange: callable=lambda value:None):
@@ -30,7 +55,7 @@ class Dropdown:
         self.selected = tk.StringVar(master)
         self.combo = ttk.Combobox(master, textvariable=self.selected, state='readonly', values=self.labels)
         self.combo.grid(column=column, row=row)
-        self.combo.bind('<<ComboboxSelected>>', lambda event: self.onchange(self.selected.get()))
+        self.selected.trace_add('write', lambda a,b,c:self.onchange(self.selected.get()))
     
     def set_labels(self, labels: Sequence[str]):
         labels = tuple(labels)
@@ -47,12 +72,12 @@ class Hider:
         self.row = row
         self.gui = None
 
-    def set_visibility(self, visible: bool):
+    def set_visibility(self, visible: bool, **kwargs):
         was_visible = self.frame != None
         if visible and not was_visible:
             self.frame = tk.Frame(self.master)
             self.frame.grid(column=self.column, row=self.row)
-            self.gui = self.func(self.frame)
+            self.gui = self.func(master=self.frame, **kwargs)
         elif not visible and was_visible:
             self.frame.destroy()
             self.frame = None
@@ -116,3 +141,12 @@ def tkdump(widget, depth=0):
     for child in widget.grid_slaves():
         tkdump(child, depth+1)
 
+def frame(master: tk.Widget, column: int, row: int):
+    frame = tk.Frame(master)
+    frame.grid(column=column, row=row)
+    return frame
+
+def label(master: tk.Widget, text: str, column: int, row: int):
+    label = tk.Label(master, text=text)
+    label.grid(column=column, row=row)
+    return label
