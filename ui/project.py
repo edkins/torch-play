@@ -1,12 +1,11 @@
 from __future__ import annotations
 import tkinter as tk
-from tkinter import ttk
-
-from matplotlib.style import available
+import torch
 
 from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton, Picture
 from data import Library, Dataset
 from layer import InputLayer, DenseLayer, SoftMaxLayer, available_layer_types, create_layer, default_layer_type
+from experiment import Experiment
 
 class ProjectGui:
     def __init__(self, master, project: Project, library: Library, column: int, row: int):
@@ -25,6 +24,9 @@ class ProjectGui:
         self.layer_selector = ButtonColumn(left_frame, column=0, row=2, selection='index', labels=[str(layer) for layer in project.layers])
         self.layer_selector.set(project.layer_index)
 
+        self.run_button = tk.Button(left_frame, text='Run', command=self.run_experiment)
+        self.run_button.grid(column=0, row=3)
+
         right_frame = frame(self.frame, column=1, row=1)
         self.picture = Picture(right_frame, column=0, row=0)
         self.picture.set(project.dataset.get_image(0))
@@ -35,6 +37,16 @@ class ProjectGui:
 
     def destroy(self):
         self.frame.destroy()
+
+    def run_experiment(self):
+        self.project.run_experiment()
+        self.run_button.config(text='Pause')
+        self.run_button.config(command=self.pause_experiment)
+
+    def pause_experiment(self):
+        self.project.pause_experiment()
+        self.run_button.config(text='Run')
+        self.run_button.config(command=self.run_experiment)
 
 class NewLayerPrompt:
     def __init__(self, master: tk.Widget, column: int, row: int, project_gui: ProjectGui):
@@ -67,6 +79,7 @@ class Project:
             SoftMaxLayer(dataset.output_shape())
         ]
         self.layer_index = 0
+        self.experiment = None
 
     def __repr__(self):
         return f'Project({self.name})'
@@ -74,3 +87,13 @@ class Project:
     def add_layer(self, layer_type: str, insert_after: int):
         self.layers.insert(insert_after + 1, create_layer(layer_type, self.layers[insert_after].shape_out, self.layers[insert_after + 1].shape_in))
         self.layer_index = insert_after + 1
+
+    def run_experiment(self):
+        if self.experiment is None:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            self.experiment = Experiment(self.layers, self.dataset, 10, 64, device)
+        self.experiment.start()
+
+    def pause_experiment(self):
+        self.experiment.pause()
+    

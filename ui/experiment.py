@@ -7,20 +7,21 @@ import numpy as np
 import threading
 from visualize import to_image
 
-class ExperimentModel(nn.Model):
+class ExperimentModel(nn.Module):
     def __init__(self, layers: Sequence[Layer]):
-        self.transform = nn.Sequential([layer.to_torch() for layer in layers])
+        super(ExperimentModel, self).__init__()
+        self.transform = nn.Sequential(*[layer.to_torch() for layer in layers])
 
-    def forward(self, x: nn.Tensor) -> nn.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.transform(x)
 
 class Records:
-    def __init__(self, num_epochs: int, state_template: dict[str,nn.Tensor]):
+    def __init__(self, num_epochs: int, state_template: dict[str,torch.Tensor]):
         self.record = {name: np.zeros((num_epochs,) + state.size()) for name,state in state_template.items()}
 
-    def store_state_dict(self, epoch: int, state_dict: dict[str,nn.Tensor]):
+    def store_state_dict(self, epoch: int, state_dict: dict[str,torch.Tensor]):
         for name in state_dict:
-            self.record[name][epoch] = state_dict[name].item().detach().cpu().numpy()
+            self.record[name][epoch] = state_dict[name].detach().cpu().numpy()
 
     def retrieve_state_dict(self, epoch: int, device: str):
         return {name: torch.tensor(self.record[name][epoch,:]).to(device) for name in self.record}
@@ -71,14 +72,14 @@ class Experiment:
 
         self.layers = layers
         self.dataset = dataset
+        self.device = device
         self.max_epochs = max_epochs
         self.batch_size = batch_size
         self.model = ExperimentModel(layers[1:]).to(device)
-        self.num_parameters = self.model.num_parameters()
-        self.records = Records(max_epochs, self.model.parameters())
+        self.records = Records(max_epochs, self.model.state_dict())
         self.epoch = 0
-        self.records.store_state_dict(self.epoch, self.model.parameters())
-        self.dataloader_train, self.dataloader_test = self.dataset.dataloaders(batch_size)
+        self.records.store_state_dict(self.epoch, self.model.state_dict())
+        self.dataloader_train, self.dataloader_test = self.dataset.loaders(batch_size)
         self.loss_fn = nn.CrossEntropyLoss(reduction='sum')
         self.optimizer = torch.optim.Adam(self.model.parameters())
         self.thread_starter = ThreadStarter(self.run_yield)
