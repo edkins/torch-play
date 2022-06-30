@@ -1,58 +1,64 @@
 from torch import nn
 
-class Shape:
-    def __init__(self, w, h, d):
-        self.w = w
-        self.h = h
-        self.d = d
-
-    def __repr__(self):
-        if self.w == 1 and self.h == 1:
-            return f'{self.d}'
-        elif self.d == 1:
-            return f'{self.w}x{self.h}'
-        else:
-            return f'{self.w}x{self.h}x{self.d}'
-
-    def count(self) -> int:
-        return self.w * self.h * self.d
-
-    def __eq__(self, other):
-        return (self.w, self.h, self.d) == (other.w, other.h, other.d)
+from shape import ShapeKind, Shape
 
 class Layer:
-    def __init__(self, shape_in: Shape, shape_out: Shape, repr: str):
-        self.shape_in = shape_in
-        self.shape_out = shape_out
-        self.repr = repr
-
-    def __repr__(self):
-        return self.repr
-
     def to_torch(self) -> nn.Module:
         ...
 
-class InputLayer(Layer):
-    def __init__(self, shape_in: Shape):
-        super().__init__(shape_in, shape_in, f'input({shape_in})')
+    def kind_in(self) -> ShapeKind:
+        ...
 
-    # Is this right? Or should we just skip the input layer?
-    def to_torch(self) -> nn.Module:
-        return nn.Identity()
+    def kind_out(self) -> ShapeKind:
+        ...
+
 
 class DenseLayer(Layer):
     def __init__(self, shape_in: Shape, shape_out: Shape):
-        super().__init__(shape_in, shape_out, f'dense({shape_out})')
+        self.s_in = shape_in
+        self.s_out = shape_out
+
+    def __repr__(self):
+        return f'dense({self.s_out})'
 
     def to_torch(self) -> nn.Module:
-        return nn.Linear(self.shape_in.count(), self.shape_out.count())
+        return nn.Linear(self.s_in.count(), self.s_out.count())
+
+    def shape_in(self) -> Shape:
+        return self.s_in
+
+    def shape_out(self) -> Shape:
+        return self.s_out
+
+    def kind_in(self) -> ShapeKind:
+        return 'flat'
+
+    def kind_out(self) -> ShapeKind:
+        return 'flat'
+    
 
 class SoftMaxLayer(Layer):
     def __init__(self, shape: Shape):
-        super().__init__(shape, shape, 'softmax')
+        self.shape = shape
+
+    def __repr__(self):
+        return f'softmax({self.shape})'
 
     def to_torch(self) -> nn.Module:
         return nn.Softmax(dim=1)
+
+    def shape_in(self) -> Shape:
+        return self.shape
+
+    def shape_out(self) -> Shape:
+        return self.shape
+
+    def kind_in(self) -> ShapeKind:
+        return 'flat'
+
+    def kind_out(self) -> ShapeKind:
+        return 'flat'
+
 
 available_layer_types = ('dense', 'softmax')
 default_layer_type = 'dense'

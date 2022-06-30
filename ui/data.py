@@ -1,9 +1,12 @@
 from __future__ import annotations
 import torch
+from typing import Literal
 from torchvision import datasets
 from torchvision.transforms import ToTensor
-from layer import Shape
+from shape import Shape, ShapeKind
 import numpy as np
+
+from visualize import to_image
 
 # name: name of the dataset
 # train: The training data, a torch.utils.data.Dataset
@@ -39,14 +42,17 @@ class Dataset:
     def input_shape(self) -> Shape:
         return Shape(self.width, self.height, self.channels)
 
+    def input_kind(self) -> ShapeKind:
+        return 'grey2d'
+
     def output_shape(self) -> Shape:
         return Shape(1, 1, self.labels)
 
-    def get_image(self, index: int) -> np.ndarray:
-        if self.channels == 1:
-            return (self.train[0][0][0,:,:].detach() * 255).byte().to('cpu').numpy()
-        else:
-            raise NotImplementedError("Only single channel images are currently supported.")
+    def output_kind(self) -> ShapeKind:
+        return 'flat'
+
+    def get_train_image(self, index: int) -> tuple[np.ndarray, Literal['L','RGB']]:
+        return to_image(self.train[index][0].detach().to('cpu').numpy(), self.input_shape(), self.input_kind())
 
 # Represents a collection of datasets
 class Library:

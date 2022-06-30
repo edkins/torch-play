@@ -195,13 +195,8 @@ class Picture:
         self.pil_image = None
         self.tk_image = None
     
-    def set(self, array: np.ndarray):
-        if len(array.shape) == 2:
-            self.pil_image = Image.fromarray(array, mode='L')
-        elif len(array.shape) == 3:
-            self.pil_image = Image.fromarray(array, mode='RGB')
-        else:
-            raise ValueError(f'Invalid tensor size: {tensor.size()}')
+    def set(self, array: np.ndarray, mode: Literal['L','RGB']):
+        self.pil_image = Image.fromarray(array, mode=mode)
         self.tk_image = ImageTk.PhotoImage(self.pil_image.resize((400, 400), Image.NEAREST))
         #self.label.config(image=tk.PhotoImage(data=tensor.to_pil().tobytes()))
         self.label.config(image=self.tk_image)
