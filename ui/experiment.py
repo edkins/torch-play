@@ -6,8 +6,8 @@ from shape import ShapeKind
 from torch import nn
 import torch
 import numpy as np
-import threading
 from visualize import to_image
+from tasks import TaskManager, Task
 
 def sequential_layers(layers: Sequence[Layer], input_kind: ShapeKind, output_kind: ShapeKind) -> tuple[nn.Module,list[int]]:
     result = []
@@ -50,40 +50,9 @@ class Records:
     def retrieve_state_dict(self, epoch: int, device: str):
         return {name: torch.tensor(self.record[name][epoch,:]).to(device) for name in self.record}
 
-class ThreadStarter:
-    def __init__(self, generator_function: callable):
-        self.generator_function = generator_function
-        self.thread = None
-        self.generator = None
-        self.want_progress = False
-        self.completed = False
 
-    def start(self):
-        if self.want_progress:
-            raise Exception("Thread already started")
-        if self.generator == None:
-            self.generator = self.generator_function()
-            self.completed = False
-        self.thread = threading.Thread(target=self.run, daemon=True)
-        self.want_progress = True
-        self.thread.start()
-
-    def pause(self):
-        if not self.want_progress:
-            raise Exception("Thread not started")
-        self.want_progress = False
-        self.thread.join()
-        self.thread = None
-
-    def run(self):
-        try:
-            while self.want_progress:
-                self.generator.__next__()
-        except StopIteration:
-            self.completed = True
-
-class Experiment:
-    def __init__(self, layers: Sequence[Layer], dataset: Dataset, max_epochs: int, batch_size: int, device: str):
+class Experiment(Task):
+    def __init__(self, layers: Sequence[Layer], dataset: Dataset, max_epochs: int, batch_size: int, device: str, task_manager: TaskManager):
         if layers[0].shape_in() != dataset.input_shape():
             raise ValueError(f"First layer input shape {layers[0].shape_in()} does not match dataset input shape {dataset.input_shape()}")
         for i in range(len(layers)-1):
@@ -97,6 +66,9 @@ class Experiment:
         self.device = device
         self.max_epochs = max_epochs
         self.batch_size = batch_size
+        self.task_manager = task_manager
+        self.generator = None
+        self.running = False
         torch_layers, indices = sequential_layers(layers, dataset.input_kind(), dataset.output_kind())
         self.model = ExperimentModel(torch_layers, indices).to(device)
         self.records = Records(max_epochs, self.model.state_dict())
@@ -105,20 +77,36 @@ class Experiment:
         self.dataloader_train, self.dataloader_test = self.dataset.loaders(batch_size)
         self.loss_fn = nn.CrossEntropyLoss(reduction='sum')
         self.optimizer = torch.optim.Adam(self.model.parameters())
-        self.thread_starter = ThreadStarter(self.run_yield)
 
     def run_yield(self):
         for i in range(self.max_epochs):
             self.epoch = i
             for _ in self.train_epoch():
                 yield None
+            for _ in self.test_epoch():
+                yield None
             self.records.store_state_dict(self.epoch, self.model.state_dict())
 
     def start(self):
-        self.thread_starter.start()
+        if self.generator == None:
+            self.generator = self.run_yield()
+        self.running = True
+        self.task_manager.include_task(self)
 
     def pause(self):
-        self.thread_starter.pause()
+        self.running = False
+
+    def tick(self) -> bool:
+        if not self.running or self.generator == None:
+            self.task_manager.remove_task(self)
+            return False
+        try:
+            next(self.generator)
+            return True
+        except StopIteration:
+            self.running = False
+            self.task_manager.remove_task(self)
+            return False
 
     def progress(self) -> tuple[int, bool]:
         return self.epoch, self.thread_starter.completed
@@ -141,6 +129,21 @@ class Experiment:
                 loss, current = loss.item(), batch_num * len(X)
                 print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
             yield None
+
+    def test_epoch(self):
+        size = len(self.dataloader_test.dataset)
+        # Set to evaluation mode
+        self.model.eval()
+        correct = torch.zeros((), dtype=torch.int64).to(self.device)
+        with torch.no_grad():
+            for batch_num, (X, y) in enumerate(self.dataloader_test):
+                X, y = X.to(self.device), y.to(self.device)
+                # Compute prediction error
+                pred = self.model(X)
+                predicted = pred.argmax(dim=1)
+                correct += (predicted == y).sum()
+                yield None
+        print (f"Test accuracy: {correct.item() / size:.2f}")
 
     def get_image(self, epoch: int, index: int, layer: int) -> np.ndarray:
         parameters = self.records.retrieve_state_dict(epoch, self.model.device)

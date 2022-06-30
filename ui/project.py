@@ -6,6 +6,7 @@ from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton, Pi
 from data import Library, Dataset
 from layer import DenseLayer, SoftMaxLayer, available_layer_types, create_layer, default_layer_type
 from experiment import Experiment
+from tasks import TaskManager
 
 class ProjectGui:
     def __init__(self, master, project: Project, library: Library, column: int, row: int):
@@ -70,7 +71,7 @@ class NewLayerPrompt:
         return True
 
 class Project:
-    def __init__(self, name: str, dataset: Dataset):
+    def __init__(self, name: str, dataset: Dataset, task_manager: TaskManager):
         self.name = name
         self.dataset = dataset
         self.layers = [
@@ -79,6 +80,7 @@ class Project:
         ]
         self.layer_index = 0
         self.experiment = None
+        self.task_manager = task_manager
 
     def __repr__(self):
         return f'Project({self.name})'
@@ -93,7 +95,7 @@ class Project:
     def run_experiment(self):
         if self.experiment is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
-            self.experiment = Experiment(self.layers, self.dataset, 10, 64, device)
+            self.experiment = Experiment(self.layers, self.dataset, 10, 64, device, self.task_manager)
         self.experiment.start()
 
     def pause_experiment(self):

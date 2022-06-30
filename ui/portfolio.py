@@ -3,6 +3,7 @@ from typing import Optional
 from gui_helpers import Dropdown, PrompterButton, TextPrompt, frame
 from project import Project, ProjectGui
 from data import Library
+from tasks import TaskManager
 
 class Placeholder:
     def __init__(self, master: tk.Widget, column: int, row: int):
@@ -17,10 +18,11 @@ class Placeholder:
         self.frame.destroy()
 
 class PortfolioGui:
-    def __init__(self, master: tk.Widget, library: Library, column: int, row: int, projects:list[Project] = [], selected_project_name:str = ''):
+    def __init__(self, master: tk.Widget, library: Library, task_manager: TaskManager, column: int, row: int, projects:list[Project] = [], selected_project_name:str = ''):
         self.projects = projects
         self.selected_project_name = selected_project_name
         self.library = library
+        self.task_manager = task_manager
         self.frame = frame(master, column=column, row=row)
 
         top_frame = frame(self.frame, column=0, row=0)
@@ -54,7 +56,7 @@ class PortfolioGui:
             self.main_frame = ProjectGui(self.frame, project, self.library, column=0, row=1)
 
     def new_project(self, name: str):
-        self.projects.append(Project(name=name, dataset=self.library.datasets[0]))
+        self.projects.append(Project(name=name, dataset=self.library.datasets[0], task_manager=self.task_manager))
         self.buttons.set_labels([project.name for project in self.projects])
         self.select_project(name)
 
