@@ -25,10 +25,10 @@ class PortfolioGui:
         self.task_manager = task_manager
         self.frame = frame(master, column=column, row=row)
 
-        top_frame = frame(self.frame, column=0, row=0)
-        self.new_button = PrompterButton(top_frame, column=0, row=0, text='New project', window_title='New project', prompt=TextPrompt, command=self.new_project, validator = self.validate_new_project_name)
+        self.top_frame = frame(self.frame, column=0, row=0)
+        self.new_button = PrompterButton(self.top_frame, column=0, row=0, text='New project', window_title='New project', prompt=TextPrompt, command=self.new_project, validator = self.validate_new_project_name)
         self.buttons = Dropdown(
-            top_frame,
+            self.top_frame,
             column=1, row=0,
             selection='name',
             labels=[project.name for project in self.projects],
@@ -53,7 +53,7 @@ class PortfolioGui:
         if project == None:
             self.main_frame = Placeholder(self.frame, column=0, row=1)
         else:
-            self.main_frame = ProjectGui(self.frame, project, self.library, column=0, row=1)
+            self.main_frame = ProjectGui(self.frame, self.top_frame, project, self.library, column=0, row=1, heading_column=2, heading_row=0)
 
     def new_project(self, name: str):
         self.projects.append(Project(name=name, dataset=self.library.datasets[0], task_manager=self.task_manager))

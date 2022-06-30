@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Sequence, Literal
+from typing import Sequence, Literal, Optional
 from PIL import Image, ImageTk
 import numpy as np
+import math
 
 class ButtonSet:
     def __init__(self,
@@ -189,14 +190,72 @@ def label(master: tk.Widget, text: str, column: int, row: int):
     return label
 
 class Picture:
-    def __init__(self, master: tk.Widget, column: int, row: int):
+    def __init__(self, master: tk.Widget, column: Optional[int]=None, row: Optional[int]=None):
         self.label = tk.Label(master)
-        self.label.grid(column=column, row=row)
+        if column != None:
+            self.label.grid(column=column, row=row)
         self.pil_image = None
         self.tk_image = None
+        self.width = 1
+        self.height = 1
+
+    def place(self, x: int, y: int, width: int, height: int):
+        self.label.place(x=x, y=y, width=width, height=height)
+        self.width = width
+        self.height = height
+
+    def destroy(self):
+        self.label.destroy()
     
-    def set(self, array: np.ndarray, mode: Literal['L','RGB']):
+    def set(self, params: tuple[np.ndarray, Literal['L','RGB']]):
+        array, mode = params
         self.pil_image = Image.fromarray(array, mode=mode)
-        self.tk_image = ImageTk.PhotoImage(self.pil_image.resize((400, 400), Image.NEAREST))
-        #self.label.config(image=tk.PhotoImage(data=tensor.to_pil().tobytes()))
+        self.tk_image = ImageTk.PhotoImage(self.pil_image.resize((self.width, self.height), Image.NEAREST))
         self.label.config(image=self.tk_image)
+        #self.label.config(text='foo')
+
+class ScrollableHGrid:
+    def __init__(self, master: tk.Widget, constructor: callable, column:int, row:int, width: int, height: int, child_width: int, child_height: int, value_fetcher: callable, big_count: int):
+        self.frame = tk.Frame(master, width=width, height=height)
+        self.frame.grid(column=column, row=row)
+        self.count = math.ceil(width / child_width) + 1
+        self.scroll = 0
+        self.value_fetcher = value_fetcher
+        self.constructor = constructor
+        self.big_count = big_count
+        self.child_width = child_width
+        self.child_height = child_height
+        self.children = [None] * self.count
+        self.child_indices = [None] * self.count
+        self.update()
+
+    def xview_scroll(self, delta: int, unit: str):
+        self.scroll += delta
+        self.update()
+
+    def update(self):
+        map_min = self.scroll // self.child_width
+        map_max = map_min + self.count
+        map_min = max(0, map_min)
+        map_max = min(self.big_count, map_max)
+
+        child_indices = [None] * self.count
+        for i in range(map_min, map_max):
+            child_indices[i % self.count] = i
+
+        for j in range(self.count):
+            if self.child_indices[j] == child_indices[j]:
+                # already correct, but may need moving
+                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=0, width=self.child_width, height=self.child_height)
+            elif self.child_indices[j] == None:
+                self.children[j] = self.constructor(master=self.frame)
+                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=0, width=self.child_width, height=self.child_height)
+                self.children[j].set(self.value_fetcher(child_indices[j]))
+            elif child_indices[j] == None:
+                self.children[j].destroy()
+                self.children[j] = None
+            else:
+                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=0, width=self.child_width, height=self.child_height)
+                self.children[j].set(self.value_fetcher(child_indices[j]))
+
+        self.child_indices = child_indices

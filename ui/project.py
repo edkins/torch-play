@@ -1,23 +1,31 @@
 from __future__ import annotations
 import tkinter as tk
+from tkinter import ttk
 import torch
 
-from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton, Picture
+from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton, Picture, ScrollableHGrid
 from data import Library, Dataset
 from layer import DenseLayer, SoftMaxLayer, available_layer_types, create_layer, default_layer_type
 from experiment import Experiment
 from tasks import TaskManager
 
 class ProjectGui:
-    def __init__(self, master, project: Project, library: Library, column: int, row: int):
+    def __init__(self, master, heading_master, project: Project, library: Library, column: int, row: int, heading_column: int, heading_row: int):
         self.project = project
         self.library = library
-        self.frame = frame(master, column=column, row=row)
         
-        top_frame = frame(self.frame, column=0, row=0, columnspan=2)
-        label(top_frame, text='Dataset:', column=0, row=0)
-        self.dataset_dropdown = Dropdown(top_frame, column=1, row=0, selection='name', labels=library.options())
+        heading_frame = frame(heading_master, column=heading_column, row=heading_row, columnspan=2)
+        label(heading_frame, text='Dataset:', column=0, row=0)
+        self.dataset_dropdown = Dropdown(heading_frame, column=1, row=0, selection='name', labels=library.options())
         self.dataset_dropdown.set(project.dataset.name)
+
+        self.frame = frame(master, column=column, row=row)
+
+        top_frame = tk.Frame(self.frame, width=300, height=120)
+        top_frame.grid(row=0, column=0, columnspan=2)
+        self.hgrid = ScrollableHGrid(top_frame, Picture, column=0, row=0, width=300, height=100, child_width=100, child_height=100, value_fetcher=project.fetch_picture, big_count=project.num_pictures())
+        self.hgridscroll = ttk.Scrollbar(top_frame, orient='horizontal', command=self.do_hgridscroll)
+        self.hgridscroll.grid(column=0, row=1, sticky='ew')
 
         left_frame = frame(self.frame, column=0, row=1)
         label(left_frame, text='Layer:', column=0, row=0)
@@ -30,7 +38,10 @@ class ProjectGui:
 
         right_frame = frame(self.frame, column=1, row=1)
         self.picture = Picture(right_frame, column=0, row=0)
-        self.picture.set(*project.dataset.get_train_image(0))
+        #self.picture.set(*project.dataset.get_train_image(0))
+
+    def do_hgridscroll(self, event, amount, unit):
+        self.hgrid.xview_scroll(int(amount), unit)
 
     def save(self):
         self.project.dataset = self.library.get_dataset_with_name(self.dataset_dropdown.get())
@@ -84,6 +95,12 @@ class Project:
 
     def __repr__(self):
         return f'Project({self.name})'
+
+    def fetch_picture(self, index: int):
+        return self.dataset.get_train_image(index)
+
+    def num_pictures(self):
+        return self.dataset.train_n
 
     def add_layer(self, layer_type: str, insert_after: int):
         if insert_after == -1:
