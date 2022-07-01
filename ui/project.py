@@ -2,12 +2,14 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 import torch
+from typing import Callable
 
-from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton, Picture, ScrollableHGrid
+from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton, PictureColumn, ScrollableHGrid
 from data import Library, Dataset
 from layer import DenseLayer, SoftMaxLayer, available_layer_types, create_layer, default_layer_type
-from experiment import Experiment
+from experiment import Experiment, DummySnapshot
 from tasks import TaskManager
+from visualize import ImageStuff
 
 class ProjectGui:
     def __init__(self, master, heading_master, project: Project, library: Library, column: int, row: int, heading_column: int, heading_row: int):
@@ -27,7 +29,11 @@ class ProjectGui:
         top_frame = tk.Frame(self.frame)
         top_frame.grid(row=0, column=0, columnspan=2, sticky='ew')
         top_frame.columnconfigure(0, weight=1)
-        self.hgrid = ScrollableHGrid(top_frame, Picture, column=0, row=0, child_width=100, child_height=100, value_fetcher=project.fetch_picture, big_count=project.num_pictures())
+        self.hgrid = ScrollableHGrid(top_frame,
+            lambda master,width,height:PictureColumn(master, count=self.project.picture_vcount(), width=width, height=height),
+            column=0, row=0, child_width=100, child_height=100 * self.project.picture_vcount(),
+            value_fetcher=project.fetch_picture,
+            big_count=project.num_pictures())
         self.hgridscroll = ttk.Scrollbar(top_frame, orient='horizontal', command=self.hgrid.xview_scroll)
         self.hgridscroll.grid(column=0, row=1, sticky='ew')
         self.hgridvscroll = ttk.Scrollbar(top_frame, orient='vertical', command=self.hgrid.yview_scroll)
@@ -47,8 +53,6 @@ class ProjectGui:
         self.run_button.grid(column=0, row=3)
 
         right_frame = frame(self.frame, column=1, row=1)
-        self.picture = Picture(right_frame, column=0, row=0)
-        #self.picture.set(*project.dataset.get_train_image(0))
 
     def save(self):
         self.project.dataset = self.library.get_dataset_with_name(self.dataset_dropdown.get())
@@ -57,8 +61,8 @@ class ProjectGui:
     def destroy(self):
         self.frame.destroy()
 
-    def run_experiment(self):
-        self.project.run_experiment()
+    def run_experiment(self) -> None:
+        self.project.run_experiment(self.update_epoch)
         self.run_button.config(text='Pause')
         self.run_button.config(command=self.pause_experiment)
 
@@ -66,6 +70,10 @@ class ProjectGui:
         self.project.pause_experiment()
         self.run_button.config(text='Run')
         self.run_button.config(command=self.run_experiment)
+
+    def update_epoch(self, epoch: int):
+        self.project.update_epoch(epoch)
+        self.hgrid.refresh()
 
 class NewLayerPrompt:
     def __init__(self, master: tk.Widget, column: int, row: int, project_gui: ProjectGui):
@@ -99,12 +107,13 @@ class Project:
         self.layer_index = 0
         self.experiment = None
         self.task_manager = task_manager
+        self.update_epoch(0)
 
     def __repr__(self):
         return f'Project({self.name})'
 
-    def fetch_picture(self, index: int):
-        return self.dataset.get_train_image(index)
+    def fetch_picture(self, index: int) -> list[ImageStuff]:
+        return self.snapshot.get_images(index)
 
     def num_pictures(self):
         return self.dataset.train_n
@@ -116,12 +125,21 @@ class Project:
             self.layers.insert(insert_after + 1, create_layer(layer_type, self.layers[insert_after].shape_out(), self.layers[insert_after + 1].shape_in()))
         self.layer_index = insert_after + 1
 
-    def run_experiment(self):
+    def run_experiment(self, callback: Callable):
         if self.experiment is None:
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
             self.experiment = Experiment(self.layers, self.dataset, 10, 64, device, self.task_manager)
-        self.experiment.start()
+        self.experiment.start(callback)
 
     def pause_experiment(self):
         self.experiment.pause()
     
+    def picture_vcount(self):
+        return 1 + len(self.layers)
+
+    def update_epoch(self, epoch: int):
+        self.snapshot_epoch = epoch
+        if self.experiment == None:
+            self.snapshot = DummySnapshot(self.layers, self.dataset)
+        else:
+            self.snapshot = self.experiment.get_snapshot(epoch)

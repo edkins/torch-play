@@ -5,6 +5,8 @@ from PIL import Image, ImageTk
 import numpy as np
 import math
 
+from visualize import ImageStuff
+
 class ButtonSet:
     def __init__(self,
             master: tk.Widget,
@@ -190,29 +192,62 @@ def label(master: tk.Widget, text: str, column: int, row: int):
     return label
 
 class Picture:
-    def __init__(self, master: tk.Widget, column: Optional[int]=None, row: Optional[int]=None):
+    def __init__(self, master: tk.Widget, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
         self.label = tk.Label(master)
         if column != None:
             self.label.grid(column=column, row=row)
         self.pil_image = None
         self.tk_image = None
-        self.width = 1
-        self.height = 1
+        if width != None:
+            self.width = width
+            self.height = height
+            self.label.place(width=width, height=height)
+        else:
+            self.width = 1
+            self.height = 1
 
-    def place(self, x: int, y: int, width: int, height: int):
-        self.label.place(x=x, y=y, width=width, height=height)
-        self.width = width
-        self.height = height
+    def place(self, x: int, y: int):
+        self.label.place(x=x, y=y, width=self.width, height=self.height)
 
     def destroy(self):
         self.label.destroy()
     
-    def set(self, params: tuple[np.ndarray, Literal['L','RGB']]):
-        array, mode = params
-        self.pil_image = Image.fromarray(array, mode=mode)
-        self.tk_image = ImageTk.PhotoImage(self.pil_image.resize((self.width, self.height), Image.NEAREST))
-        self.label.config(image=self.tk_image)
-        #self.label.config(text='foo')
+    def set(self, params: Optional[ImageStuff]):
+        if params == None:
+            self.pil_image = None
+            self.tk_image = None
+            self.label.config(image=None)
+        else:
+            array, mode = params
+            # Store in self or else the image might be prematurely garbage collected
+            self.pil_image = Image.fromarray(array, mode=mode)
+            self.tk_image = ImageTk.PhotoImage(self.pil_image.resize((self.width, self.height), Image.NEAREST))
+            self.label.config(image=self.tk_image)
+
+class PictureColumn:
+    def __init__(self, master: tk.Widget, count: int, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
+        self.frame = ttk.Frame(master)
+        if column != None:
+            self.frame.grid(column=column, row=row)
+        if width != None:
+            self.frame.place(width=width, height=height)
+        self.pictures = [Picture(self.frame, width=width, height=height//count) for i in range(count)]
+        for i in range(count):
+            self.pictures[i].place(0, i*(height//count))
+        self.width = width
+        self.height = height
+
+    def place(self, x: int, y: int):
+        self.frame.place(x=x, y=y, width=self.width, height=self.height)
+
+    def destroy(self):
+        self.frame.destroy()
+
+    def set(self, images: list[Optional[ImageStuff]]):
+        if len(images) != len(self.pictures):
+            raise ValueError('Number of images does not match number of pictures')
+        for i, image in enumerate(images):
+            self.pictures[i].set(image)
 
 class ScrollableHGrid:
     def __init__(self, master: tk.Widget, constructor: callable, column:int, row:int, child_width: int, child_height: int, value_fetcher: callable, big_count: int):
@@ -296,16 +331,24 @@ class ScrollableHGrid:
             if self.child_indices[j] == child_indices[j]:
                 # already correct, but may need moving
                 if self.children[j] != None:
-                    self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll, width=self.child_width, height=self.child_height)
+                    self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll)
             elif self.child_indices[j] == None:
-                self.children[j] = self.constructor(master=self.frame)
-                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll, width=self.child_width, height=self.child_height)
+                self.children[j] = self.constructor(master=self.frame, width=self.child_width, height=self.child_height)
+                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll)
                 self.children[j].set(self.value_fetcher(child_indices[j]))
             elif child_indices[j] == None:
                 self.children[j].destroy()
                 self.children[j] = None
             else:
-                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll, width=self.child_width, height=self.child_height)
+                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll)
                 self.children[j].set(self.value_fetcher(child_indices[j]))
 
         self.child_indices = child_indices
+
+    def refresh(self):
+        for child in self.children:
+            if child != None:
+                child.destroy()
+        self.children = [None] * self.count
+        self.child_indices = [None] * self.count
+        self.update()
