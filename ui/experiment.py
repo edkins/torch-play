@@ -34,12 +34,15 @@ class ExperimentModel(nn.Module):
             x = layer(x)
         return x
 
-    def get_arrays(self, x: torch.Tensor) -> list[np.ndarray]:
+    def get_arrays(self, x: torch.Tensor, trace: bool = False) -> list[np.ndarray]:
         self.eval()
         result = []
         for layer in self.transforms:
+            if trace: print(x[0])
+            if trace: print(layer)
             x = layer(x)
             result.append(x.detach().cpu().numpy())
+        if trace: print(x[0])
         return result
 
 class Records:
@@ -191,7 +194,7 @@ class Snapshot:
             torch.zeros((self.batch_size - 1, *x.size())).to(self.device)
         ), axis=0)
 
-        arrays = self.model.get_arrays(x)
+        arrays = self.model.get_arrays(x, trace=False)
         result += [to_image(arrays[self.indices[i]][0], self.layers[i].shape_out(), self.layers[i].kind_out()) for i in range(len(self.layers)-1)]
         result.append(to_output_image(arrays[self.indices[-1]][0], y))
         return result
