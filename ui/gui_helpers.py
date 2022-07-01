@@ -215,11 +215,13 @@ class Picture:
         #self.label.config(text='foo')
 
 class ScrollableHGrid:
-    def __init__(self, master: tk.Widget, constructor: callable, column:int, row:int, width: int, height: int, child_width: int, child_height: int, value_fetcher: callable, big_count: int):
-        self.frame = tk.Frame(master, width=width, height=height)
-        self.frame.grid(column=column, row=row)
-        self.count = math.ceil(width / child_width) + 1
+    def __init__(self, master: tk.Widget, constructor: callable, column:int, row:int, child_width: int, child_height: int, value_fetcher: callable, big_count: int):
+        self.frame = tk.Frame(master)
+        self.frame.grid(column=column, row=row, sticky='ew')
+        self.frame.configure(height=300)
+        self.count = math.ceil(self.frame.winfo_width() / child_width) + 1
         self.scroll = 0
+        self.yscroll = 0
         self.value_fetcher = value_fetcher
         self.constructor = constructor
         self.big_count = big_count
@@ -228,12 +230,59 @@ class ScrollableHGrid:
         self.children = [None] * self.count
         self.child_indices = [None] * self.count
         self.update()
+        self.xscrollcommand = None
+        self.yscrollcommand = None
+        self.frame.bind('<Configure>', lambda event:self.update())
 
-    def xview_scroll(self, delta: int, unit: str):
-        self.scroll += delta
+    def xview_scroll(self, *args):
+        if args[0] == 'moveto':
+            bigwidth = self.big_count * self.child_width
+            self.scroll = int(float(args[1]) * bigwidth)
+        elif args[0] == 'scroll' and args[2] == 'units':
+            self.scroll += int(int(args[1]) * self.child_width / 2)
+        elif args[0] == 'scroll' and args[2] == 'pages':
+            self.scroll += int(int(args[1]) * self.child_width * self.count / 2)
+        else:
+            print('Unknown scroll command:', args)
         self.update()
+        self.send_xscroll_command()
+
+    def yview_scroll(self, *args):
+        if args[0] == 'moveto':
+            bigheight = self.child_height
+            self.yscroll = int(float(args[1]) * bigheight)
+        elif args[0] == 'scroll' and args[2] == 'units':
+            self.yscroll += int(int(args[1]) * self.child_height / 2)
+        elif args[0] == 'scroll' and args[2] == 'pages':
+            self.yscroll += int(int(args[1]) * self.child_height * self.count / 2)
+        else:
+            print('Unknown scroll command:', args)
+        self.update()
+        self.send_yscroll_command()
+
+    def send_xscroll_command(self):
+        if self.xscrollcommand != None:
+            bigwidth = self.big_count * self.child_width
+            begin = self.scroll / bigwidth
+            end = (self.scroll + self.frame.winfo_width()) / bigwidth
+            self.xscrollcommand(begin,end)
+
+    def send_yscroll_command(self):
+        if self.yscrollcommand != None:
+            bigheight = self.child_height
+            begin = self.yscroll / bigheight
+            end = (self.yscroll + self.frame.winfo_height()) / bigheight
+            self.yscrollcommand(begin,end)
 
     def update(self):
+        count = math.ceil(self.frame.winfo_width() / self.child_width) + 1
+        if self.count != count:
+            self.count = count
+            for child in self.children:
+                child.destroy()
+            self.children = [None] * self.count
+            self.child_indices = [None] * self.count
+
         map_min = self.scroll // self.child_width
         map_max = map_min + self.count
         map_min = max(0, map_min)
@@ -246,16 +295,17 @@ class ScrollableHGrid:
         for j in range(self.count):
             if self.child_indices[j] == child_indices[j]:
                 # already correct, but may need moving
-                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=0, width=self.child_width, height=self.child_height)
+                if self.children[j] != None:
+                    self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll, width=self.child_width, height=self.child_height)
             elif self.child_indices[j] == None:
                 self.children[j] = self.constructor(master=self.frame)
-                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=0, width=self.child_width, height=self.child_height)
+                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll, width=self.child_width, height=self.child_height)
                 self.children[j].set(self.value_fetcher(child_indices[j]))
             elif child_indices[j] == None:
                 self.children[j].destroy()
                 self.children[j] = None
             else:
-                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=0, width=self.child_width, height=self.child_height)
+                self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll, width=self.child_width, height=self.child_height)
                 self.children[j].set(self.value_fetcher(child_indices[j]))
 
         self.child_indices = child_indices

@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 from typing import Optional
 from gui_helpers import Dropdown, PrompterButton, TextPrompt, frame
 from project import Project, ProjectGui
@@ -23,7 +24,9 @@ class PortfolioGui:
         self.selected_project_name = selected_project_name
         self.library = library
         self.task_manager = task_manager
-        self.frame = frame(master, column=column, row=row)
+        self.frame = ttk.Frame(master)
+        self.frame.grid(column=column, row=row, sticky='ew')
+        self.frame.columnconfigure(0, weight=1)
 
         self.top_frame = frame(self.frame, column=0, row=0)
         self.new_button = PrompterButton(self.top_frame, column=0, row=0, text='New project', window_title='New project', prompt=TextPrompt, command=self.new_project, validator = self.validate_new_project_name)
