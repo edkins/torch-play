@@ -1,14 +1,11 @@
 import numpy as np
 import math
-import PIL
+from PIL import Image, ImageTk
 import tkinter as tk
 from tkinter import ttk
+from typing import Optional
 
-from typing import Literal, Optional
 from shape import Shape, ShapeKind
-
-ImageMode = Literal['L','RGB']
-ImageStuff = tuple[np.ndarray, ImageMode]
 
 class Artifact:
     def __init__(self, array: np.ndarray, shape: Shape, kind: ShapeKind, correct_class: Optional[int] = None):
@@ -17,12 +14,17 @@ class Artifact:
         self.kind = kind
         self.correct_class = correct_class
 
-    def to_image(self, width: int, height: int) -> PIL.Image:
+    def to_image(self, width: int, height: int) -> Image:
         if self.correct_class != None:
-            stuff = to_output_image(self.array, self.correct_class)
+            highlight=self.correct_class,
+            highlight_color=[0,1,0]
+            non_highlight_color=[1,0,0]
         else:
-            stuff = to_image(self.array, self.shape, self.kind)
-        return PIL.Image.fromarray(*stuff).resize((width, height), PIL.Image.NEAREST)
+            highlight=None
+            highlight_color=None
+            non_highlight_color=[1,1,1]
+        img = to_image(self.array, self.shape, self.kind, highlight, highlight_color, non_highlight_color)
+        return img.resize((width, height), Image.NEAREST)
 
     def coords_to_neuron(self, x: int, y: int, width: int, height: int) -> Optional[tuple[int]]:
         if self.shape.d == 1:
@@ -32,7 +34,7 @@ class Artifact:
         elif self.shape.w == 1 and self.shape.h == 1:
             nx = 0
             ny = 0
-            w = math.ceil(math.sqrt(shape.d))
+            w = math.ceil(math.sqrt(self.shape.d))
             h = h
             x0 = (x * w) // width
             y0 = (y * h) // height
@@ -56,34 +58,33 @@ def uint8ify(x: np.ndarray) -> np.ndarray:
 def uint8_softclamp(x: np.ndarray) -> np.ndarray:
     return uint8ify(np.tanh((x - 0.5) * 2) * 0.45 + 0.55)
 
-def to_image(x: np.ndarray, shape: Shape, kind: ShapeKind) -> ImageStuff:
+def to_image(x: np.ndarray, shape: Shape, kind: ShapeKind, highlight: Optional[tuple[int]]=None, highlight_color: Optional[tuple[float,float,float]]=None, non_highlight_color: tuple[float,float,float]=[1,1,1]) -> Image:
     #print(f'to_image: {x.shape} {shape} {kind}')
+
+    ones = (1,) * len(x.shape)
+    color_vec = np.ones(x.shape + (1,)) * np.array(non_highlight_color).reshape(ones + (3,))
+    if highlight != None:
+        if len(highlight) != len(x.shape):
+            raise ValueError(f"highlight.shape={highlight} is not the same length as x.shape={x.shape}")
+
+        vec = color_vec
+        for coord in highlight:
+            vec = vec[coord]
+        vec[:] = highlight_color
+
     if shape.d == 1:
-        return uint8_softclamp(x.reshape(shape.w, shape.h)), 'L'
+        return Image.fromarray(uint8_softclamp((x.reshape(x.shape + (1,)) * color_vec).reshape(shape.w, shape.h, 3)), 'RGB')
     elif shape.w == 1 and shape.h == 1:
         width = math.ceil(math.sqrt(shape.d))
         height = width
-        extra = np.zeros((width * height - shape.d,),dtype='uint8')
-        return np.concatenate((uint8_softclamp(x), extra)).reshape((width,height)), 'L'
+        extra = np.zeros((width * height - shape.d,3),dtype='uint8')
+        return Image.fromarray(np.concatenate((uint8_softclamp(x.reshape(x.shape + (1,)) * color_vec), extra)).reshape((width,height,3)), 'RGB')
     else:
         raise NotImplementedError(f"Only single channel images are currently supported. shape={shape}. x.shape={x.shape}")
 
-def to_output_image(x: np.ndarray, y: int) -> ImageStuff:
-    if len(x.shape) != 1:
-        raise NotImplementedError(f"Only single-dimension output vectors are supported. x.shape={x.shape}")
-    length = x.shape[0]
-    if y < 0 or y > length:
-        raise ValueError(f"y={y} is out of range. x.shape={x.shape}")
-    colours = np.array([[0,1,0] if i==y else [1,0,0] for i in range(length)])
-    column = uint8_softclamp(x.reshape((length,1)) * colours)
-    width = math.ceil(math.sqrt(length))
-    height = width
-    extra = np.zeros((width * height - length,3),dtype='uint8')
-    return np.concatenate((column, extra)).reshape((width,height,3)), 'RGB'
-
 class Visualizer:
     def __init__(self, master: tk.Misc, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
-        self.label = tk.Label(master)
+        self.label = ttk.Label(master)
         if column != None:
             self.label.grid(column=column, row=row)
         self.tk_image = None
@@ -107,5 +108,5 @@ class Visualizer:
             self.label.config(image=None)
         else:
             # Store in self or else the image might be prematurely garbage collected
-            self.tk_image = PIL.ImageTk.PhotoImage(artifact.to_image(self.width, self.height))
+            self.tk_image = ImageTk.PhotoImage(artifact.to_image(self.width, self.height))
             self.label.config(image=self.tk_image)

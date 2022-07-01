@@ -1,11 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, Callable, Sequence, Literal, Optional
-from PIL import Image, ImageTk
-import numpy as np
 import math
-
-from visualize import ImageStuff
 
 class ButtonSet:
     def __init__(self,
@@ -190,39 +186,6 @@ def label(master: tk.Widget, text: str, column: int, row: int):
     label = tk.Label(master, text=text)
     label.grid(column=column, row=row)
     return label
-
-class Picture:
-    def __init__(self, master: tk.Widget, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
-        self.label = tk.Label(master)
-        if column != None:
-            self.label.grid(column=column, row=row)
-        self.pil_image = None
-        self.tk_image = None
-        if width != None:
-            self.width = width
-            self.height = height
-            self.label.place(width=width, height=height)
-        else:
-            self.width = 1
-            self.height = 1
-
-    def place(self, x: int, y: int):
-        self.label.place(x=x, y=y, width=self.width, height=self.height)
-
-    def destroy(self):
-        self.label.destroy()
-    
-    def set(self, params: Optional[ImageStuff]):
-        if params == None:
-            self.pil_image = None
-            self.tk_image = None
-            self.label.config(image=None)
-        else:
-            array, mode = params
-            # Store in self or else the image might be prematurely garbage collected
-            self.pil_image = Image.fromarray(array, mode=mode)
-            self.tk_image = ImageTk.PhotoImage(self.pil_image.resize((self.width, self.height), Image.NEAREST))
-            self.label.config(image=self.tk_image)
 
 class PictureColumn:
     def __init__(self, master: tk.Widget, constructor:Callable, count: int, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
