@@ -1,4 +1,5 @@
 from torch import nn
+import numpy as np
 
 from shape import ShapeKind, Shape
 
@@ -35,6 +36,11 @@ class DenseLayer(Layer):
 
     def kind_out(self) -> ShapeKind:
         return 'flat'
+
+    def torch_reshape_weights(self, weights: np.ndarray, neuron: tuple[int]) -> np.ndarray:
+        if len(neuron) != 1:
+            raise ValueError(f'DenseLayer.torch_shape_weights: neuron must be a tuple of length 1, got {neuron}')
+        return weights.reshape(self.s_out.count(), self.s_in.count())[neuron]
     
 
 class SoftMaxLayer(Layer):

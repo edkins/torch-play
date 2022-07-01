@@ -3,7 +3,7 @@ import math
 from PIL import Image, ImageTk
 import tkinter as tk
 from tkinter import ttk
-from typing import Optional
+from typing import Callable, Optional
 
 from shape import Shape, ShapeKind
 
@@ -83,7 +83,7 @@ def to_image(x: np.ndarray, shape: Shape, kind: ShapeKind, highlight: Optional[t
         vec[:] = highlight_color
 
     if shape.d == 1:
-        return Image.fromarray((uint8_softclamp(x, color_vec).reshape(shape.w, shape.h, 3)), 'RGB')
+        return Image.fromarray(uint8_softclamp(x, color_vec).reshape(shape.w, shape.h, 3), 'RGB')
     elif shape.w == 1 and shape.h == 1:
         width = math.ceil(math.sqrt(shape.d))
         height = width
@@ -93,7 +93,7 @@ def to_image(x: np.ndarray, shape: Shape, kind: ShapeKind, highlight: Optional[t
         raise NotImplementedError(f"Only single channel images are currently supported. shape={shape}. x.shape={x.shape}")
 
 class Visualizer:
-    def __init__(self, master: tk.Misc, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
+    def __init__(self, master: tk.Misc, index:int, xindex:int, onclick:Callable, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
         self.label = ttk.Label(master)
         if column != None:
             self.label.grid(column=column, row=row)
@@ -107,8 +107,11 @@ class Visualizer:
             self.height = 1
         self.highlight_neuron = None
         self.artifact = None
+        self.index = index
+        self.xindex = xindex
+        self.onclick = onclick
 
-        self.label.bind('<Button-1>', self.on_click)
+        self.label.bind('<Button-1>', self.handle_click)
 
     def place(self, x: int, y: int):
         self.label.place(x=x, y=y, width=self.width, height=self.height)
@@ -120,6 +123,11 @@ class Visualizer:
         self.artifact = artifact
         self.redraw()
 
+    def select_none(self):
+        if self.highlight_neuron != None:
+            self.highlight_neuron = None
+            self.redraw()
+
     def redraw(self):
         if self.artifact == None:
             self.tk_image = None
@@ -129,7 +137,7 @@ class Visualizer:
             self.tk_image = ImageTk.PhotoImage(self.artifact.to_image(self.width, self.height, self.highlight_neuron))
             self.label.config(image=self.tk_image)
 
-    def on_click(self, event):
+    def handle_click(self, event):
         if self.artifact == None:
             return
 
@@ -140,3 +148,4 @@ class Visualizer:
         else:
             self.highlight_neuron = highlight_neuron
         self.redraw()
+        self.onclick(self.xindex, self.index, self.highlight_neuron)

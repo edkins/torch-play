@@ -188,14 +188,14 @@ def label(master: tk.Widget, text: str, column: int, row: int):
     return label
 
 class PictureColumn:
-    def __init__(self, master: tk.Widget, constructor:Callable, count: int, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
+    def __init__(self, master: tk.Widget, constructor:Callable, constructor_args:dict, count: int, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
         self.frame = ttk.Frame(master)
         self.constructor = constructor
         if column != None:
             self.frame.grid(column=column, row=row)
         if width != None:
             self.frame.place(width=width, height=height)
-        self.pictures = [constructor(master=self.frame, width=width, height=height//count) for i in range(count)]
+        self.pictures = [constructor(master=self.frame, width=width, height=height//count, index=i, **constructor_args) for i in range(count)]
         for i in range(count):
             self.pictures[i].place(0, i*(height//count))
         self.width = width
@@ -297,7 +297,7 @@ class ScrollableHGrid:
                 if self.children[j] != None:
                     self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll)
             elif self.child_indices[j] == None:
-                self.children[j] = self.constructor(master=self.frame, width=self.child_width, height=self.child_height)
+                self.children[j] = self.constructor(master=self.frame, width=self.child_width, height=self.child_height, index=child_indices[j])
                 self.children[j].place(x=child_indices[j] * self.child_width - self.scroll, y=-self.yscroll)
                 self.children[j].set(self.value_fetcher(child_indices[j]))
             elif child_indices[j] == None:

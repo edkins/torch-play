@@ -26,13 +26,17 @@ class ProjectGui:
         self.frame.grid(column=column, row=row, sticky='ew')
         self.frame.columnconfigure(0, weight=1)
 
+        self.highlight_data_index = None
+        self.highlight_layer = None
+        self.highlight_neuron = None
+
         top_frame = tk.Frame(self.frame)
         top_frame.grid(row=0, column=0, columnspan=2, sticky='ew')
         top_frame.columnconfigure(0, weight=1)
         self.hgrid = ScrollableHGrid(top_frame,
-            lambda master,width,height:PictureColumn(master, constructor=Visualizer, count=self.project.picture_vcount(), width=width, height=height),
+            lambda master,width,height,index:PictureColumn(master, constructor=Visualizer, constructor_args={'onclick':self.click_visualizer,'xindex':index}, count=self.project.picture_vcount(), width=width, height=height),
             column=0, row=0, child_width=100, child_height=100 * self.project.picture_vcount(),
-            value_fetcher=project.fetch_artifacts,
+            value_fetcher=self.fetch_artifacts,
             big_count=project.num_pictures())
         self.hgridscroll = ttk.Scrollbar(top_frame, orient='horizontal', command=self.hgrid.xview_scroll)
         self.hgridscroll.grid(column=0, row=1, sticky='ew')
@@ -53,6 +57,18 @@ class ProjectGui:
         self.run_button.grid(column=0, row=3)
 
         right_frame = frame(self.frame, column=1, row=1)
+
+    def click_visualizer(self, xindex: int, yindex: int, neuron: Optional[tuple[int]]):
+        self.highlight_data_index = xindex
+        self.highlight_layer = yindex - 1
+        self.highlight_neuron = neuron
+        self.hgrid.refresh()
+
+    def fetch_artifacts(self, index) -> list[Artifact]:
+        if index == self.highlight_data_index and self.highlight_neuron != None:
+            return self.project.fetch_artifacts(index, self.highlight_layer, self.highlight_neuron)
+        else:
+            return self.project.fetch_artifacts(index, None, None)
 
     def save(self):
         self.project.dataset = self.library.get_dataset_with_name(self.dataset_dropdown.get())
@@ -112,8 +128,8 @@ class Project:
     def __repr__(self):
         return f'Project({self.name})'
 
-    def fetch_artifacts(self, index: int) -> list[Optional[Artifact]]:
-        return self.snapshot.get_artifacts(index)
+    def fetch_artifacts(self, index: int, select_layer: Optional[int], select_neuron: Optional[tuple[int]]) -> list[Optional[Artifact]]:
+        return self.snapshot.get_artifacts(index, select_layer, select_neuron)
 
     def num_pictures(self):
         return self.dataset.train_n

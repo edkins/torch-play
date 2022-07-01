@@ -45,6 +45,9 @@ class ExperimentModel(nn.Module):
         if trace: print(x[0])
         return result
 
+    def get_weight_array(self, layer: int) -> np.ndarray:
+        return self.transforms[layer].weight.detach().cpu().numpy()
+
 class Records:
     def __init__(self, num_epochs: int, state_template: dict[str,torch.Tensor]):
         self.record = {name: np.zeros((num_epochs,) + state.size()) for name,state in state_template.items()}
@@ -183,10 +186,17 @@ class Snapshot:
         else:
             return self.layers[i].shape_out()
 
-    def get_artifacts(self, index: int) -> list[Optional[Artifact]]:
+    def get_weight_array(self, layer: int, select_neuron: tuple[int]) -> np.ndarray:
+        array = self.model.get_weight_array(self.indices[layer])
+        return self.layers[layer].torch_reshape_weights(array, select_neuron)
+
+    def get_artifacts(self, index: int, select_layer: Optional[int]=None, select_neuron: Optional[tuple[int]]=None) -> list[Optional[Artifact]]:
         x = self.dataset.get_train_x(index).to(self.device)
         y = self.dataset.get_train_y(index)
-        result = [Artifact(x.cpu().numpy(), self.layers[0].shape_in(), self.layers[0].kind_in())]
+        if select_layer == 0:
+            result = [Artifact(self.get_weight_array(0, select_neuron), self.layers[0].shape_in(), self.layers[0].kind_in())]
+        else:
+            result = [Artifact(x.cpu().numpy(), self.layers[0].shape_in(), self.layers[0].kind_in())]
 
         # extend x with zeros to have size batch_size
         x = torch.cat((
@@ -196,7 +206,7 @@ class Snapshot:
 
         arrays = self.model.get_arrays(x, trace=False)
         result += [Artifact(
-            arrays[self.indices[i]][0],
+            self.get_weight_array(i, select_neuron) if select_layer==i+1 else arrays[self.indices[i]][0],
             self.layers[i].shape_out(),
             self.layers[i].kind_out(),
             correct_class=y if i==len(self.layers)-1 else None
@@ -208,7 +218,7 @@ class DummySnapshot:
         self.layers = layers
         self.dataset = dataset
 
-    def get_artifacts(self, index: int) -> list[Optional[Artifact]]:
+    def get_artifacts(self, index: int, select_layer: Optional[int]=None, select_neuron: Optional[tuple[int]]=None) -> list[Optional[Artifact]]:
         x = self.dataset.get_train_x(index)
         result = [Artifact(x.cpu().numpy(), self.layers[0].shape_in(), self.layers[0].kind_in())]
         result += [None] * len(self.layers)
