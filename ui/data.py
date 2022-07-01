@@ -46,7 +46,7 @@ class Dataset:
         return 'grey2d'
 
     def output_shape(self) -> Shape:
-        return Shape(1, 1, self.labels)
+        return Shape(1, 1, self.labels, self.descriptions)
 
     def output_kind(self) -> ShapeKind:
         return 'flat'

@@ -68,8 +68,10 @@ def uint8ify(x: np.ndarray) -> np.ndarray:
 def uint8_softclamp(x: np.ndarray, colorvec: np.ndarray) -> np.ndarray:
     return uint8ify((np.tanh((x - 0.5) * 2) * 0.45 + 0.55).reshape(x.shape+(1,)) * colorvec)
 
-def to_image(x: np.ndarray, shape: Shape, kind: ShapeKind, highlight: Optional[tuple[int]]=None, highlight_color: Optional[tuple[float,float,float]]=None, non_highlight_color: tuple[float,float,float]=[1,1,1]) -> Image:
+def to_image(x0: np.ndarray, shape: Shape, kind: ShapeKind, highlight: Optional[tuple[int]]=None, highlight_color: Optional[tuple[float,float,float]]=None, non_highlight_color: tuple[float,float,float]=[1,1,1]) -> Image:
     #print(f'to_image: {x.shape} {shape} {kind}')
+
+    x = (x0 - x0.min()) / (x0.max() - x0.min())
 
     ones = (1,) * len(x.shape)
     color_vec = np.ones(x.shape + (1,)) * np.array(non_highlight_color).reshape(ones + (3,))

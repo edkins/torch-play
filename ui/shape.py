@@ -1,13 +1,14 @@
-from typing import Literal
+from typing import Literal, Sequence, Optional
 import torch
 
 ShapeKind = Literal['grey2d', 'flat']
 
 class Shape:
-    def __init__(self, w, h, d):
+    def __init__(self, w:int, h:int, d:int, descriptions:Optional[Sequence[str]]=None):
         self.w = w
         self.h = h
         self.d = d
+        self.descriptions = tuple(descriptions) if descriptions else None
 
     def __repr__(self):
         if self.w == 1 and self.h == 1:

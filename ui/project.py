@@ -31,7 +31,7 @@ class ProjectGui:
         self.highlight_neuron = None
 
         top_frame = tk.Frame(self.frame)
-        top_frame.grid(row=0, column=0, columnspan=2, sticky='ew')
+        top_frame.grid(row=0, column=0, columnspan=1, sticky='ew')
         top_frame.columnconfigure(0, weight=1)
         self.hgrid = ScrollableHGrid(top_frame,
             lambda master,width,height,index:PictureColumn(master, constructor=Visualizer, constructor_args={'onclick':self.click_visualizer,'xindex':index}, count=self.project.picture_vcount(), width=width, height=height),
@@ -47,21 +47,16 @@ class ProjectGui:
         self.hgrid.send_xscroll_command()
         self.hgrid.send_yscroll_command()
 
-        left_frame = frame(self.frame, column=0, row=1)
-        label(left_frame, text='Layer:', column=0, row=0)
-        self.new_layer_button = PrompterButton(left_frame, column=0, row=1, text='New', window_title='New layer', prompt=NewLayerPrompt, project_gui=self)
-        self.layer_selector = ButtonColumn(left_frame, column=0, row=2, selection='index', labels=['input'] + [str(layer) for layer in project.layers])
-        self.layer_selector.set(project.layer_index)
-
-        self.run_button = tk.Button(left_frame, text='Run', command=self.run_experiment)
-        self.run_button.grid(column=0, row=3)
-
-        right_frame = frame(self.frame, column=1, row=1)
+        bottom_frame = frame(self.frame, column=0, row=1, columnspan=1)
+        self.run_button = tk.Button(bottom_frame, text='Run', command=self.run_experiment)
+        self.run_button.grid(column=0, row=0)
+        self.layer_label = label(bottom_frame, text='', column=1, row=0)
 
     def click_visualizer(self, xindex: int, yindex: int, neuron: Optional[tuple[int]]):
         self.highlight_data_index = xindex
         self.highlight_layer = yindex - 1
         self.highlight_neuron = neuron
+        self.layer_label.configure(text=f'Layer {self.highlight_layer}, Neuron {neuron} {self.project.neuron_description(self.highlight_layer, neuron)}')
         self.hgrid.refresh()
 
     def fetch_artifacts(self, index) -> list[Artifact]:
@@ -72,7 +67,6 @@ class ProjectGui:
 
     def save(self):
         self.project.dataset = self.library.get_dataset_with_name(self.dataset_dropdown.get())
-        self.project.layer_index = self.layer_selector.get()
 
     def destroy(self):
         self.frame.destroy()
@@ -91,26 +85,26 @@ class ProjectGui:
         self.project.update_epoch(epoch)
         self.hgrid.refresh()
 
-class NewLayerPrompt:
-    def __init__(self, master: tk.Widget, column: int, row: int, project_gui: ProjectGui):
-        self.project_gui = project_gui
-        self.frame = frame(master, column=column, row=row)
+# class NewLayerPrompt:
+#     def __init__(self, master: tk.Widget, column: int, row: int, project_gui: ProjectGui):
+#         self.project_gui = project_gui
+#         self.frame = frame(master, column=column, row=row)
 
-        label(self.frame, "Layer type:", column=0, row=0)
-        self.layer_type_dropdown = Dropdown(self.frame, column=1, row=0, selection='name', labels=available_layer_types)
-        self.layer_type_dropdown.set(default_layer_type)
+#         label(self.frame, "Layer type:", column=0, row=0)
+#         self.layer_type_dropdown = Dropdown(self.frame, column=1, row=0, selection='name', labels=available_layer_types)
+#         self.layer_type_dropdown.set(default_layer_type)
 
-        label(self.frame, "Insert after:", column=0, row=1)
-        self.insert_after_dropdown = Dropdown(self.frame, column=1, row=1, selection='index', labels=['input'] + [str(layer) for layer in project_gui.project.layers])
-        self.insert_after_dropdown.set(project_gui.layer_selector.get())
+#         label(self.frame, "Insert after:", column=0, row=1)
+#         self.insert_after_dropdown = Dropdown(self.frame, column=1, row=1, selection='index', labels=['input'] + [str(layer) for layer in project_gui.project.layers])
+#         self.insert_after_dropdown.set(project_gui.layer_selector.get())
 
-    def submit(self) -> bool:
-        layer_type = self.layer_type_dropdown.get()
-        insert_after = self.insert_after_dropdown.get() - 1
-        self.project_gui.project.add_layer(layer_type, insert_after)
-        self.project_gui.layer_selector.set_labels([str(layer) for layer in self.project_gui.project.layers])
-        self.project_gui.layer_selector.set(self.project_gui.project.layer_index)
-        return True
+#     def submit(self) -> bool:
+#         layer_type = self.layer_type_dropdown.get()
+#         insert_after = self.insert_after_dropdown.get() - 1
+#         self.project_gui.project.add_layer(layer_type, insert_after)
+#         self.project_gui.layer_selector.set_labels([str(layer) for layer in self.project_gui.project.layers])
+#         self.project_gui.layer_selector.set(self.project_gui.project.layer_index)
+#         return True
 
 class Project:
     def __init__(self, name: str, dataset: Dataset, task_manager: TaskManager):
@@ -120,7 +114,7 @@ class Project:
             DenseLayer(dataset.input_shape(), dataset.output_shape()),
             SoftMaxLayer(dataset.output_shape())
         ]
-        self.layer_index = 0
+        #self.layer_index = 0
         self.experiment = None
         self.task_manager = task_manager
         self.update_epoch(0)
@@ -134,12 +128,12 @@ class Project:
     def num_pictures(self):
         return self.dataset.train_n
 
-    def add_layer(self, layer_type: str, insert_after: int):
-        if insert_after == -1:
-            self.layers.insert(0, create_layer(layer_type, self.dataset.input_shape(), self.layers[0].shape_in()))
-        else:
-            self.layers.insert(insert_after + 1, create_layer(layer_type, self.layers[insert_after].shape_out(), self.layers[insert_after + 1].shape_in()))
-        self.layer_index = insert_after + 1
+    # def add_layer(self, layer_type: str, insert_after: int):
+    #     if insert_after == -1:
+    #         self.layers.insert(0, create_layer(layer_type, self.dataset.input_shape(), self.layers[0].shape_in()))
+    #     else:
+    #         self.layers.insert(insert_after + 1, create_layer(layer_type, self.layers[insert_after].shape_out(), self.layers[insert_after + 1].shape_in()))
+    #     self.layer_index = insert_after + 1
 
     def run_experiment(self, callback: Callable):
         if self.experiment is None:
@@ -159,3 +153,20 @@ class Project:
             self.snapshot = DummySnapshot(self.layers, self.dataset)
         else:
             self.snapshot = self.experiment.get_snapshot(epoch)
+
+    def neuron_description(self, layer: int, neuron: Optional[tuple[int]]) -> str:
+        if neuron is None:
+            return ''
+        
+        if layer == -1:
+            shape = self.layers[0].shape_in()
+        else:
+            shape = self.layers[layer].shape_out()
+        
+        if shape.descriptions == None:
+            return ''
+
+        if len(neuron) != 1:
+            return ''
+        
+        return shape.descriptions[neuron[0]]
