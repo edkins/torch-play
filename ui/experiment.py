@@ -6,7 +6,7 @@ from shape import ShapeKind
 from torch import nn
 import torch
 import numpy as np
-from visualize import to_image, ImageStuff, to_output_image
+from visualize import Artifact
 from shape import Shape
 from tasks import TaskManager, Task
 
@@ -183,10 +183,10 @@ class Snapshot:
         else:
             return self.layers[i].shape_out()
 
-    def get_images(self, index: int) -> list[ImageStuff]:
+    def get_artifacts(self, index: int) -> list[Optional[Artifact]]:
         x = self.dataset.get_train_x(index).to(self.device)
         y = self.dataset.get_train_y(index)
-        result = [to_image(x.cpu().numpy(), self.layers[0].shape_in(), self.layers[0].kind_in())]
+        result = [Artifact(x.cpu().numpy(), self.layers[0].shape_in(), self.layers[0].kind_in())]
 
         # extend x with zeros to have size batch_size
         x = torch.cat((
@@ -195,8 +195,12 @@ class Snapshot:
         ), axis=0)
 
         arrays = self.model.get_arrays(x, trace=False)
-        result += [to_image(arrays[self.indices[i]][0], self.layers[i].shape_out(), self.layers[i].kind_out()) for i in range(len(self.layers)-1)]
-        result.append(to_output_image(arrays[self.indices[-1]][0], y))
+        result += [Artifact(
+            arrays[self.indices[i]][0],
+            self.layers[i].shape_out(),
+            self.layers[i].kind_out(),
+            correct_class=y if i==len(self.layers)-1 else None
+            ) for i in range(len(self.layers))]
         return result
 
 class DummySnapshot:
@@ -204,8 +208,8 @@ class DummySnapshot:
         self.layers = layers
         self.dataset = dataset
 
-    def get_images(self, index: int) -> list[Optional[ImageStuff]]:
+    def get_artifacts(self, index: int) -> list[Optional[Artifact]]:
         x = self.dataset.get_train_x(index)
-        result = [to_image(x.cpu().numpy(), self.layers[0].shape_in(), self.layers[0].kind_in())]
+        result = [Artifact(x.cpu().numpy(), self.layers[0].shape_in(), self.layers[0].kind_in())]
         result += [None] * len(self.layers)
         return result

@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Sequence, Literal, Optional
+from typing import Any, Callable, Sequence, Literal, Optional
 from PIL import Image, ImageTk
 import numpy as np
 import math
@@ -225,13 +225,14 @@ class Picture:
             self.label.config(image=self.tk_image)
 
 class PictureColumn:
-    def __init__(self, master: tk.Widget, count: int, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
+    def __init__(self, master: tk.Widget, constructor:Callable, count: int, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
         self.frame = ttk.Frame(master)
+        self.constructor = constructor
         if column != None:
             self.frame.grid(column=column, row=row)
         if width != None:
             self.frame.place(width=width, height=height)
-        self.pictures = [Picture(self.frame, width=width, height=height//count) for i in range(count)]
+        self.pictures = [constructor(master=self.frame, width=width, height=height//count) for i in range(count)]
         for i in range(count):
             self.pictures[i].place(0, i*(height//count))
         self.width = width
@@ -243,9 +244,9 @@ class PictureColumn:
     def destroy(self):
         self.frame.destroy()
 
-    def set(self, images: list[Optional[ImageStuff]]):
+    def set(self, images: list[Any]):
         if len(images) != len(self.pictures):
-            raise ValueError('Number of images does not match number of pictures')
+            raise ValueError('Number of images does not match number of visualizers')
         for i, image in enumerate(images):
             self.pictures[i].set(image)
 

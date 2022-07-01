@@ -1,12 +1,55 @@
 import numpy as np
 import math
-from typing import Literal
+import PIL
+import tkinter as tk
+from tkinter import ttk
+
+from typing import Literal, Optional
 from shape import Shape, ShapeKind
 
 ImageMode = Literal['L','RGB']
 ImageStuff = tuple[np.ndarray, ImageMode]
 
-# Clamp to [0,1], multiply by 255 and case to uint8
+class Artifact:
+    def __init__(self, array: np.ndarray, shape: Shape, kind: ShapeKind, correct_class: Optional[int] = None):
+        self.array = array
+        self.shape = shape
+        self.kind = kind
+        self.correct_class = correct_class
+
+    def to_image(self, width: int, height: int) -> PIL.Image:
+        if self.correct_class != None:
+            stuff = to_output_image(self.array, self.correct_class)
+        else:
+            stuff = to_image(self.array, self.shape, self.kind)
+        return PIL.Image.fromarray(*stuff).resize((width, height), PIL.Image.NEAREST)
+
+    def coords_to_neuron(self, x: int, y: int, width: int, height: int) -> Optional[tuple[int]]:
+        if self.shape.d == 1:
+            nx = (x * self.shape.w) // width
+            ny = (y * self.shape.h) // height
+            nc = 0
+        elif self.shape.w == 1 and self.shape.h == 1:
+            nx = 0
+            ny = 0
+            w = math.ceil(math.sqrt(shape.d))
+            h = h
+            x0 = (x * w) // width
+            y0 = (y * h) // height
+            nc = (x0 + y0 * w)
+        else:
+            raise NotImplementedError(f"Can't convert to neuron coordinates for this shape. {self.shape}")
+
+        if self.kind == ShapeKind.flat:
+            return (nc + nx * self.shape.d + ny * self.shape.d * self.shape.w),
+        elif self.kind == ShapeKind.grey2d:
+            if nc != 0:
+                raise ValueError(f"Not expecting a neuron class for this layer: {self.shape} {nx} {ny} {nc}")
+            return nx, ny
+        else:
+            raise ValueError(f"Unknown kind: {self.kind}")
+
+# Clamp to [0,1], multiply by 255 and cast to uint8
 def uint8ify(x: np.ndarray) -> np.ndarray:
     return (x.clip(0,1) * 255).astype('uint8')
 
@@ -37,3 +80,32 @@ def to_output_image(x: np.ndarray, y: int) -> ImageStuff:
     height = width
     extra = np.zeros((width * height - length,3),dtype='uint8')
     return np.concatenate((column, extra)).reshape((width,height,3)), 'RGB'
+
+class Visualizer:
+    def __init__(self, master: tk.Misc, column: Optional[int]=None, row: Optional[int]=None, width: Optional[int]=None, height: Optional[int]=None):
+        self.label = tk.Label(master)
+        if column != None:
+            self.label.grid(column=column, row=row)
+        self.tk_image = None
+        if width != None:
+            self.width = width
+            self.height = height
+            self.label.place(width=width, height=height)
+        else:
+            self.width = 1
+            self.height = 1
+
+    def place(self, x: int, y: int):
+        self.label.place(x=x, y=y, width=self.width, height=self.height)
+
+    def destroy(self):
+        self.label.destroy()
+    
+    def set(self, artifact: Optional[Artifact]):
+        if artifact == None:
+            self.tk_image = None
+            self.label.config(image=None)
+        else:
+            # Store in self or else the image might be prematurely garbage collected
+            self.tk_image = PIL.ImageTk.PhotoImage(artifact.to_image(self.width, self.height))
+            self.label.config(image=self.tk_image)

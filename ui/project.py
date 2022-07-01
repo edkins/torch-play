@@ -2,14 +2,14 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 import torch
-from typing import Callable
+from typing import Callable, Optional
 
 from gui_helpers import Dropdown, frame, label, ButtonColumn, PrompterButton, PictureColumn, ScrollableHGrid
 from data import Library, Dataset
 from layer import DenseLayer, SoftMaxLayer, available_layer_types, create_layer, default_layer_type
 from experiment import Experiment, DummySnapshot
 from tasks import TaskManager
-from visualize import ImageStuff
+from visualize import Visualizer, Artifact
 
 class ProjectGui:
     def __init__(self, master, heading_master, project: Project, library: Library, column: int, row: int, heading_column: int, heading_row: int):
@@ -30,9 +30,9 @@ class ProjectGui:
         top_frame.grid(row=0, column=0, columnspan=2, sticky='ew')
         top_frame.columnconfigure(0, weight=1)
         self.hgrid = ScrollableHGrid(top_frame,
-            lambda master,width,height:PictureColumn(master, count=self.project.picture_vcount(), width=width, height=height),
+            lambda master,width,height:PictureColumn(master, constructor=Visualizer, count=self.project.picture_vcount(), width=width, height=height),
             column=0, row=0, child_width=100, child_height=100 * self.project.picture_vcount(),
-            value_fetcher=project.fetch_picture,
+            value_fetcher=project.fetch_artifacts,
             big_count=project.num_pictures())
         self.hgridscroll = ttk.Scrollbar(top_frame, orient='horizontal', command=self.hgrid.xview_scroll)
         self.hgridscroll.grid(column=0, row=1, sticky='ew')
@@ -112,8 +112,8 @@ class Project:
     def __repr__(self):
         return f'Project({self.name})'
 
-    def fetch_picture(self, index: int) -> list[ImageStuff]:
-        return self.snapshot.get_images(index)
+    def fetch_artifacts(self, index: int) -> list[Optional[Artifact]]:
+        return self.snapshot.get_artifacts(index)
 
     def num_pictures(self):
         return self.dataset.train_n
