@@ -14,8 +14,14 @@ class Artifact:
         self.kind = kind
         self.correct_class = correct_class
 
-    def to_image(self, width: int, height: int) -> Image:
-        if self.correct_class != None:
+    def to_image(self, width: int, height: int, highlight_neuron:tuple[int] = None) -> Image:
+        if highlight_neuron != None:
+            if len(highlight_neuron) != len(self.array.shape):
+                raise ValueError(f"Expected {len(self.array.shape)} dimensions, got {len(highlight_neuron)}")
+            highlight = highlight_neuron
+            highlight_color=[1,0,1]
+            non_highlight_color = [1,1,1]
+        elif self.correct_class != None:
             highlight=self.correct_class,
             highlight_color=[0,1,0]
             non_highlight_color=[1,0,0]
@@ -31,20 +37,24 @@ class Artifact:
             nx = (x * self.shape.w) // width
             ny = (y * self.shape.h) // height
             nc = 0
+            if nx < 0 or ny < 0 or nx >= self.shape.w or ny >= self.shape.h:
+                return None
         elif self.shape.w == 1 and self.shape.h == 1:
             nx = 0
             ny = 0
             w = math.ceil(math.sqrt(self.shape.d))
-            h = h
+            h = w
             x0 = (x * w) // width
             y0 = (y * h) // height
             nc = (x0 + y0 * w)
+            if nc < 0 or nc >= self.shape.d:
+                return None
         else:
             raise NotImplementedError(f"Can't convert to neuron coordinates for this shape. {self.shape}")
 
-        if self.kind == ShapeKind.flat:
+        if self.kind == 'flat':
             return (nc + nx * self.shape.d + ny * self.shape.d * self.shape.w),
-        elif self.kind == ShapeKind.grey2d:
+        elif self.kind == 'grey2d':
             if nc != 0:
                 raise ValueError(f"Not expecting a neuron class for this layer: {self.shape} {nx} {ny} {nc}")
             return nx, ny
@@ -55,8 +65,8 @@ class Artifact:
 def uint8ify(x: np.ndarray) -> np.ndarray:
     return (x.clip(0,1) * 255).astype('uint8')
 
-def uint8_softclamp(x: np.ndarray) -> np.ndarray:
-    return uint8ify(np.tanh((x - 0.5) * 2) * 0.45 + 0.55)
+def uint8_softclamp(x: np.ndarray, colorvec: np.ndarray) -> np.ndarray:
+    return uint8ify((np.tanh((x - 0.5) * 2) * 0.45 + 0.55).reshape(x.shape+(1,)) * colorvec)
 
 def to_image(x: np.ndarray, shape: Shape, kind: ShapeKind, highlight: Optional[tuple[int]]=None, highlight_color: Optional[tuple[float,float,float]]=None, non_highlight_color: tuple[float,float,float]=[1,1,1]) -> Image:
     #print(f'to_image: {x.shape} {shape} {kind}')
@@ -73,12 +83,12 @@ def to_image(x: np.ndarray, shape: Shape, kind: ShapeKind, highlight: Optional[t
         vec[:] = highlight_color
 
     if shape.d == 1:
-        return Image.fromarray(uint8_softclamp((x.reshape(x.shape + (1,)) * color_vec).reshape(shape.w, shape.h, 3)), 'RGB')
+        return Image.fromarray((uint8_softclamp(x, color_vec).reshape(shape.w, shape.h, 3)), 'RGB')
     elif shape.w == 1 and shape.h == 1:
         width = math.ceil(math.sqrt(shape.d))
         height = width
         extra = np.zeros((width * height - shape.d,3),dtype='uint8')
-        return Image.fromarray(np.concatenate((uint8_softclamp(x.reshape(x.shape + (1,)) * color_vec), extra)).reshape((width,height,3)), 'RGB')
+        return Image.fromarray(np.concatenate((uint8_softclamp(x, color_vec), extra)).reshape((width,height,3)), 'RGB')
     else:
         raise NotImplementedError(f"Only single channel images are currently supported. shape={shape}. x.shape={x.shape}")
 
@@ -95,6 +105,10 @@ class Visualizer:
         else:
             self.width = 1
             self.height = 1
+        self.highlight_neuron = None
+        self.artifact = None
+
+        self.label.bind('<Button-1>', self.on_click)
 
     def place(self, x: int, y: int):
         self.label.place(x=x, y=y, width=self.width, height=self.height)
@@ -103,10 +117,26 @@ class Visualizer:
         self.label.destroy()
     
     def set(self, artifact: Optional[Artifact]):
-        if artifact == None:
+        self.artifact = artifact
+        self.redraw()
+
+    def redraw(self):
+        if self.artifact == None:
             self.tk_image = None
             self.label.config(image=None)
         else:
             # Store in self or else the image might be prematurely garbage collected
-            self.tk_image = ImageTk.PhotoImage(artifact.to_image(self.width, self.height))
+            self.tk_image = ImageTk.PhotoImage(self.artifact.to_image(self.width, self.height, self.highlight_neuron))
             self.label.config(image=self.tk_image)
+
+    def on_click(self, event):
+        if self.artifact == None:
+            return
+
+        # Convert click coordinates to neuron coordinates
+        highlight_neuron = self.artifact.coords_to_neuron(event.x, event.y, self.width, self.height)
+        if highlight_neuron == self.highlight_neuron:
+            self.highlight_neuron = None
+        else:
+            self.highlight_neuron = highlight_neuron
+        self.redraw()
