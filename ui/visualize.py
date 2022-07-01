@@ -7,6 +7,7 @@ ImageMode = Literal['L','RGB']
 ImageStuff = tuple[np.ndarray, ImageMode]
 
 def to_image(x: np.ndarray, shape: Shape, kind: ShapeKind) -> ImageStuff:
+    #print(f'to_image: {x.shape} {shape} {kind}')
     if shape.d == 1:
         return (x.reshape(shape.w, shape.h) * 255).astype('uint8'), 'L'
     elif shape.w == 1 and shape.h == 1:

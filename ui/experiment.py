@@ -72,30 +72,22 @@ class Experiment(Task):
         self.task_manager = task_manager
         self.generator = None
         self.running = False
-        self.epoch = 0
+        self.epoch = -1
         self.epoch_callback = None
         self.dataloader_train, self.dataloader_test = self.dataset.loaders(batch_size)
         self.loss_fn = nn.CrossEntropyLoss(reduction='sum')
         self.model = self.create_model()[0]
         self.optimizer = torch.optim.Adam(self.model.parameters())
         self.records = Records(max_epochs, self.model.state_dict())
-        self.records.store_state_dict(self.epoch, self.model.state_dict())
+        #self.records.store_state_dict(self.epoch, self.model.state_dict())
 
     def create_model(self) -> tuple[ExperimentModel, list[int]]:
         torch_layers, indices = sequential_layers(self.layers, self.dataset.input_kind(), self.dataset.output_kind())
         return ExperimentModel(torch_layers).to(self.device), indices
 
-    def run_yield(self):
-        for i in range(self.max_epochs):
-            self.epoch = i
-            for _ in self.train_epoch():
-                yield None
-            for _ in self.test_epoch():
-                yield None
-            self.records.store_state_dict(self.epoch, self.model.state_dict())
-
     def start(self, epoch_callback: Callable):
         if self.generator == None:
+            self.epoch = -1
             self.generator = self.run_yield()
         self.running = True
         self.epoch_callback = epoch_callback
@@ -119,6 +111,15 @@ class Experiment(Task):
     def progress(self) -> tuple[int, bool]:
         return self.epoch, self.thread_starter.completed
 
+    def run_yield(self):
+        for i in range(self.max_epochs):
+            for _ in self.train_epoch():
+                yield None
+            for _ in self.test_epoch():
+                yield None
+            self.epoch = i
+            self.records.store_state_dict(self.epoch, self.model.state_dict())
+
     def train_epoch(self):
         size = len(self.dataloader_train.dataset)
         # Set to training mode
@@ -137,7 +138,7 @@ class Experiment(Task):
                 loss, current = loss.item(), batch_num * len(X)
                 print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
                 if self.epoch_callback != None:
-                    self.epoch_callback(self.epoch)
+                    self.epoch_callback(self.epoch + 1)
             yield None
 
     def test_epoch(self):
@@ -156,7 +157,10 @@ class Experiment(Task):
         print (f"Test accuracy: {correct.item() / size:.2f}")
 
     def get_snapshot(self, epoch: int) -> Snapshot:
-        parameters = self.records.retrieve_state_dict(epoch, self.device)
+        if epoch > self.epoch:
+            parameters = self.model.state_dict()
+        else:
+            parameters = self.records.retrieve_state_dict(epoch, self.device)
         temp_model, indices = self.create_model()
         temp_model.load_state_dict(parameters)
         return Snapshot(temp_model, indices, self.layers, self.dataset, self.batch_size, self.device)
