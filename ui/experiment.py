@@ -6,7 +6,7 @@ from shape import ShapeKind
 from torch import nn
 import torch
 import numpy as np
-from visualize import to_image, ImageStuff
+from visualize import to_image, ImageStuff, to_output_image
 from shape import Shape
 from tasks import TaskManager, Task
 
@@ -182,6 +182,7 @@ class Snapshot:
 
     def get_images(self, index: int) -> list[ImageStuff]:
         x = self.dataset.get_train_x(index).to(self.device)
+        y = self.dataset.get_train_y(index)
         result = [to_image(x.cpu().numpy(), self.layers[0].shape_in(), self.layers[0].kind_in())]
 
         # extend x with zeros to have size batch_size
@@ -191,7 +192,8 @@ class Snapshot:
         ), axis=0)
 
         arrays = self.model.get_arrays(x)
-        result += [to_image(arrays[self.indices[i]][0], self.layers[i].shape_out(), self.layers[i].kind_out()) for i in range(len(self.layers))]
+        result += [to_image(arrays[self.indices[i]][0], self.layers[i].shape_out(), self.layers[i].kind_out()) for i in range(len(self.layers)-1)]
+        result.append(to_output_image(arrays[self.indices[-1]][0], y))
         return result
 
 class DummySnapshot:

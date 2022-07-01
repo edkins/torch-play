@@ -346,9 +346,6 @@ class ScrollableHGrid:
         self.child_indices = child_indices
 
     def refresh(self):
-        for child in self.children:
+        for j, child in enumerate(self.children):
             if child != None:
-                child.destroy()
-        self.children = [None] * self.count
-        self.child_indices = [None] * self.count
-        self.update()
+                child.set(self.value_fetcher(self.child_indices[j]))

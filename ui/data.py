@@ -54,6 +54,9 @@ class Dataset:
     def get_train_x(self, index: int) -> torch.Tensor:
         return self.train[index][0]
 
+    def get_train_y(self, index: int) -> int:
+        return self.train[index][1]
+
     #def get_train_image(self, index: int) -> tuple[np.ndarray, Literal['L','RGB']]:
     #    return to_image(self.train[index][0].detach().to('cpu').numpy(), self.input_shape(), self.input_kind())
 
