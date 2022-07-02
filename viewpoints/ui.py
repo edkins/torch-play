@@ -69,23 +69,33 @@ class MainWindow:
 
         train_indices = [[] for _ in range(k)]
         test_indices = [[] for _ in range(k)]
+        total = 0
         for i, c in enumerate(project.get_all_training_y()):
-            train_indices[c].append(i)
+            if len(train_indices[c]) < 100:
+                train_indices[c].append(i)
+                total += 1
+                if total >= 100 * k:
+                    break
+        total = 0
         for i, c in enumerate(project.get_all_test_y()):
-            test_indices[c].append(i)
+            if len(test_indices[c]) < 100:
+                test_indices[c].append(i)
+                total += 1
+                if total >= 100 * k:
+                    break
 
         for category in range(k):
             ImageDropdown(
                 self.inp_panel,
                 text=CLASS_LABELS[dimension][category],
-                values = train_indices[category][:100],
+                values = train_indices[category],
                 renderer = project.get_training_image,
                 onchange = self.select_training_image,
             ).grid(column=category+3, row=0)
             ImageDropdown(
                 self.inp_panel,
                 text=CLASS_LABELS[dimension][category],
-                values = test_indices[category][:100],
+                values = test_indices[category],
                 renderer = project.get_test_image,
                 onchange = self.select_test_image,
             ).grid(column=category+3, row=1)

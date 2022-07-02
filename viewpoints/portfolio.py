@@ -1,8 +1,8 @@
 import torch
-import torchvision
+import torchvision.datasets
 
 from project import Project
-from viewpoint import Viewpoint
+from viewpoint import Viewpoint, ImageViewpoint
 from layers import FlattenLinear
 
 CLASS_LABELS = {
@@ -22,6 +22,7 @@ def create_projects() -> list[Project]:
             ],
             viewpoints=[
                 Viewpoint('Input'),
-            ]
+            ],
+            train_preview=ImageViewpoint(x='x',y='y',invert=True),
         ),
     ]

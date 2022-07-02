@@ -159,10 +159,12 @@ class Project(Task):
         self.init_data_and_model()
         return self.train_preview.to_image(self.test_data[index][0])
 
-    def get_all_training_y(self) -> torch.Tensor:
+    def get_all_training_y(self):
         self.init_data_and_model()
-        return torch.tensor([y for X,y in self.train_data], dtype=torch.int64)
+        for X,y in self.train_data:
+            yield y
     
-    def get_all_test_y(self) -> torch.Tensor:
+    def get_all_test_y(self):
         self.init_data_and_model()
-        return torch.tensor([y for X,y in self.test_data], dtype=torch.int64)
+        for X,y in self.test_data:
+            yield y
