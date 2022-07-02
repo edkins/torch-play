@@ -1,9 +1,10 @@
-from typing import Any, Callable, NamedTuple, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 import torchvision
 import torch
 
 from tasks import TaskManager, Task
 from layers import NamedShape, SAMPLE
+from viewpoint import Viewpoint
 
 class ExperimentModel(torch.nn.Module):
     def __init__(self, layers: Sequence[torch.nn.Module]):
@@ -20,6 +21,7 @@ class Project(Task):
             name: str, dataset_class: Callable,
             in_size: NamedShape, out_size: NamedShape,
             layers: list[torch.nn.Module],
+            viewpoints: list[Viewpoint],
             max_epochs: int=10, batch_size=64,
             loss_fn=torch.nn.CrossEntropyLoss(), optimizer_fn=torch.optim.Adam):
         self.name = name
@@ -46,6 +48,9 @@ class Project(Task):
         self.generator = None
         self.finished = False
         self.num_epochs_completed = 0
+
+        # Things that aren't involved in the training process but are used for visualization
+        self.viewpoints = viewpoints
 
     def init_data_and_model(self) -> None:
         if self.train_data != None:

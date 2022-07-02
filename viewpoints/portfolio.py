@@ -15,11 +15,9 @@ def create_projects() -> list[Project]:
             layers=[
                 FlattenLinear((('x',28),('y',28)), (('class_fashion',10),)),
                 torch.nn.Softmax(dim=1),
+            ],
+            viewpoints=[
+                Viewpoint('Input'),
             ]
         ),
-    ]
-
-def create_viewpoints() -> list[Viewpoint]:
-    return [
-        Viewpoint('Input Image')
     ]

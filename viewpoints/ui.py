@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Optional
 
-from portfolio import create_projects, create_viewpoints
+from portfolio import create_projects
 from project import Project
 from tasks import TaskManager
 
@@ -15,17 +15,20 @@ class MainWindow:
         self.task_manager = TaskManager(self.win)
 
         self.projects = create_projects()
-        self.viewpoints = create_viewpoints()
 
         self.project_name = tk.StringVar(self.win, self.projects[0].name)
-        self.viewpoint_name = tk.StringVar(self.win, self.viewpoints[0].name)
+        self.viewpoint_name = tk.StringVar(self.win, '')
 
         top_panel = ttk.Frame(self.win)
         top_panel.grid(column=0, row=0)
         ttk.Label(top_panel, text='Project:').grid(column=0, row=0)
-        ttk.Combobox(top_panel, values=list(sorted(p.name for p in self.projects)), state='readonly', textvariable=self.project_name).grid(column=1, row=0)
+        self.project_combo = ttk.Combobox(top_panel, values=list(sorted(p.name for p in self.projects)), state='readonly', textvariable=self.project_name)
+        self.project_combo.grid(column=1, row=0)
+        self.project_combo.bind('<<ComboboxSelected>>', lambda e: self.populate_viewpoints())
         ttk.Label(top_panel, text='Viewpoint:').grid(column=2, row=0)
-        ttk.Combobox(top_panel, values=list(sorted(v.name for v in self.viewpoints)), state='readonly', textvariable=self.viewpoint_name).grid(column=3, row=0)
+        self.viewpoint_combo = ttk.Combobox(top_panel, values=[], state='readonly', textvariable=self.viewpoint_name)
+        self.viewpoint_combo.grid(column=3, row=0)
+        self.populate_viewpoints()
 
         train_panel = ttk.Frame(self.win)
         train_panel.grid(column=0, row=1)
@@ -37,6 +40,14 @@ class MainWindow:
 
         main_panel = ttk.Frame(self.win)
         main_panel.grid(column=0, row=2)
+
+    def populate_viewpoints(self) -> None:
+        project = self.project()
+        if project == None:
+            self.viewpoint_combo.configure(values=[])
+            return
+        self.viewpoint_combo.configure(values=list(sorted(v.name for v in project.viewpoints)))
+        self.viewpoint_name.set(project.viewpoints[0].name)
 
     def mainloop(self) -> None:
         self.win.mainloop()
