@@ -5,6 +5,10 @@ from project import Project
 from viewpoint import Viewpoint
 from layers import FlattenLinear
 
+CLASS_LABELS = {
+    'class_fashion': torchvision.datasets.FashionMNIST.classes
+}
+
 def create_projects() -> list[Project]:
     return [
         Project(

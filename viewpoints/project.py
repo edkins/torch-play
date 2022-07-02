@@ -1,10 +1,11 @@
 from typing import Any, Callable, Optional, Sequence
 import torchvision
 import torch
+import PIL
 
 from tasks import TaskManager, Task
 from layers import NamedShape, SAMPLE
-from viewpoint import Viewpoint
+from viewpoint import Viewpoint, ImageViewpoint
 
 class ExperimentModel(torch.nn.Module):
     def __init__(self, layers: Sequence[torch.nn.Module]):
@@ -23,7 +24,8 @@ class Project(Task):
             layers: list[torch.nn.Module],
             viewpoints: list[Viewpoint],
             max_epochs: int=10, batch_size=64,
-            loss_fn=torch.nn.CrossEntropyLoss(), optimizer_fn=torch.optim.Adam):
+            loss_fn=torch.nn.CrossEntropyLoss(), optimizer_fn=torch.optim.Adam,
+            train_preview:ImageViewpoint = ImageViewpoint(x='x',y='y')):
         self.name = name
         self.dataset_class = dataset_class
         self.in_size = in_size
@@ -51,6 +53,7 @@ class Project(Task):
 
         # Things that aren't involved in the training process but are used for visualization
         self.viewpoints = viewpoints
+        self.train_preview = train_preview
 
     def init_data_and_model(self) -> None:
         if self.train_data != None:
@@ -147,3 +150,19 @@ class Project(Task):
                 correct += (predicted == y).sum()
                 yield None
         print (f"Test accuracy: {correct.item() / size:.2f}")
+
+    def get_training_image(self, index: int) -> PIL.Image:
+        self.init_data_and_model()
+        return self.train_preview.to_image(self.train_data[index][0])
+
+    def get_test_image(self, index: int) -> PIL.Image:
+        self.init_data_and_model()
+        return self.train_preview.to_image(self.test_data[index][0])
+
+    def get_all_training_y(self) -> torch.Tensor:
+        self.init_data_and_model()
+        return torch.tensor([y for X,y in self.train_data], dtype=torch.int64)
+    
+    def get_all_test_y(self) -> torch.Tensor:
+        self.init_data_and_model()
+        return torch.tensor([y for X,y in self.test_data], dtype=torch.int64)
