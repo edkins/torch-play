@@ -1,4 +1,4 @@
-from typing import Callable, NamedTuple, Optional, Sequence
+from typing import Any, Callable, NamedTuple, Optional, Sequence
 import torchvision
 import torch
 
@@ -52,10 +52,17 @@ class Project(Task):
             return
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.train_data = self.dataset_class(root='./data', train=True, download=True, transform=torchvision.transforms.ToTensor())
-        self.test_data = self.dataset_class(root='./data', train=False, download=True, transform=torchvision.transforms.ToTensor())
+        self.train_data = self.dataset_class(root='./data', train=True, download=True, transform=self.to_tensor)
+        self.test_data = self.dataset_class(root='./data', train=False, download=True, transform=self.to_tensor)
         self.model = self.manufacture_model(state_dict=None).to(self.device)
         self.optimizer = self.optimizer_fn(self.model.parameters())
+
+    def to_tensor(self, x: Any) -> torch.Tensor:
+        tensor = torchvision.transforms.ToTensor()(x)
+        # Don't like the dummy single-element dimension for greyscale images
+        if len(tensor.shape) == 3 and len(self.in_size) == 2 and tensor.shape[0] == 1:
+            return tensor[0]
+        return tensor
 
     def manufacture_model(self, state_dict:Optional[dict[str,torch.Tensor]] = None) -> ExperimentModel:
         model = ExperimentModel(self.layers)

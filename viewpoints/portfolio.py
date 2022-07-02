@@ -10,10 +10,10 @@ def create_projects() -> list[Project]:
         Project(
             name='FashionMNIST Linear',
             dataset_class=torchvision.datasets.FashionMNIST,
-            in_size=(('_channel',1),('x',28),('y',28)),
+            in_size=(('x',28),('y',28)),
             out_size=(('class_fashion',10),),
             layers=[
-                FlattenLinear((('_channel',1),('x',28),('y',28)), (('class_fashion',10),)),
+                FlattenLinear((('x',28),('y',28)), (('class_fashion',10),)),
                 torch.nn.Softmax(dim=1),
             ]
         ),
