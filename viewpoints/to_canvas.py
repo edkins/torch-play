@@ -18,9 +18,10 @@ def onto_canvas(project: Project, viewpoint: Viewpoint, canvas: tk.Canvas, tenso
         (viewpoint.layer, viewpoint.color),
         (viewpoint.layer, viewpoint.labels or '0'),
     ]
+    size = viewpoint.size
     tensors = project.get_layer_properties(tensor, layer_index_and_property)
     count = np.product(tensors[0].size())
-    csize = min(canvas.winfo_width(), canvas.winfo_height()) - 20
+    csize = min(canvas.winfo_width(), canvas.winfo_height()) - size - 2
     arrays = [
         rescale(tensors[0].rename(None).reshape(count).numpy()) * csize,
         rescale(tensors[1].rename(None).reshape(count).numpy()) * csize,
@@ -36,6 +37,6 @@ def onto_canvas(project: Project, viewpoint: Viewpoint, canvas: tk.Canvas, tenso
         r,g,b = arrays[2][i]
         if viewpoint.labels is not None:
             label = CLASS_LABELS[viewpoint.labels][label_indices[i]]
-            canvas.create_text(x + 30, y + 10, text=label, fill='black', anchor='w')
-        canvas.create_rectangle(x+1, y+1, x+19, y+19, fill=f'#{r:02x}{g:02x}{b:02x}', outline='')
+            canvas.create_text(x + size*1.5, y + size*0.5, text=label, fill='black', anchor='w')
+        canvas.create_rectangle(x+1, y+1, x+size-1, y+size-1, fill=f'#{r:02x}{g:02x}{b:02x}', outline='')
     

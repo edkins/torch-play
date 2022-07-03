@@ -13,7 +13,7 @@ def get_palette(name: str, input: np.ndarray) -> np.ndarray:
     elif name == 'black-white':
         return input * np.ones((1,1,3))
     elif name == 'red-blue':
-        return (input < 0) * input * np.array([[[-1,0,0]]]) + (input >= 0) * input * np.array([[[0,0,1]]])
+        return np.ones((1,1,3)) + (input < 0) * input * np.array([[[0,1,1]]]) - (input >= 0) * input * np.array([[[1,1,0]]])
     else:
         raise ValueError(f'Unknown palette: {name}')
 
@@ -31,9 +31,10 @@ class ImageViewpoint:
     
 
 class Viewpoint:
-    def __init__(self, name: str, layer:int, x: str, y: str, color:str = 'activation', palette: str = 'black-white', labels:Optional[str] = None):
+    def __init__(self, name: str, layer:int, x: str, y: str, size:int=20, color:str = 'activation', palette: str = 'black-white', labels:Optional[str] = None):
         self.name = name
         self.layer = layer
+        self.size = size
         self.x = x
         self.y = y
         self.color = color
