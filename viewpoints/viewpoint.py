@@ -1,7 +1,7 @@
+from typing import Optional
 import numpy as np
 import torch
 import PIL
-import tkinter as tk
 
 def to_3d(t: torch.tensor) -> torch.tensor:
     size = t.size()
@@ -12,6 +12,8 @@ def get_palette(name: str, input: np.ndarray) -> np.ndarray:
         return (1 - input) * np.ones((1,1,3))
     elif name == 'black-white':
         return input * np.ones((1,1,3))
+    elif name == 'red-blue':
+        return (input < 0) * input * np.array([[[-1,0,0]]]) + (input >= 0) * input * np.array([[[0,0,1]]])
     else:
         raise ValueError(f'Unknown palette: {name}')
 
@@ -29,10 +31,11 @@ class ImageViewpoint:
     
 
 class Viewpoint:
-    def __init__(self, name: str, layer:int, x: str, y: str, color:str = 'activation', palette: str = 'black-white'):
+    def __init__(self, name: str, layer:int, x: str, y: str, color:str = 'activation', palette: str = 'black-white', labels:Optional[str] = None):
         self.name = name
         self.layer = layer
         self.x = x
         self.y = y
         self.color = color
         self.palette = palette
+        self.labels = labels

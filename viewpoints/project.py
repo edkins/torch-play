@@ -185,20 +185,28 @@ class Project(Task):
 
     def get_tensor_property(self, x:torch.Tensor, property_name: str) -> torch.Tensor:
         if property_name == 'activation':
-            return x.to('cpu')
+            return x.detach().to('cpu')
+        elif property_name == '0':
+            return torch.zeros_like(x).to('cpu')
         elif property_name in x.names:
             dims = [(x.shape[i] if n == property_name else 1) for i,n in enumerate(x.names)]
-            r = torch.arange(x.size(property_name), dtype=torch.int64).reshape(*dims).refine_names(*x.names)
-            ones = torch.ones(x.size(), dtype=torch.int64).refine_names(*x.names)
+            r = torch.arange(x.size(property_name), dtype=torch.float).reshape(*dims).refine_names(*x.names)
+            ones = torch.ones(x.size(), dtype=torch.float).refine_names(*x.names)
             return ones * r
         else:
             raise ValueError(f"Unknown tensor property: {property_name}")
+
+    def identical_batch(self, x: torch.Tensor) -> torch.Tensor:
+        names = x.names
+        shape = x.shape
+        x = x.rename(None).reshape((1,) + shape).expand((self.batch_size,) + shape)
+        return x.refine_names(SAMPLE, *names)
 
     def get_layer_properties(self, x:torch.Tensor, layer_index_and_property: Sequence[Tuple[int,str]]) -> list[torch.Tensor]:
         self.init_data_and_model()
         max_layer = max(layer for layer,p in layer_index_and_property)
         results = [None] * len(layer_index_and_property)
-        x = x.to(self.device)
+        x = self.identical_batch(x.detach()).to(self.device)
 
         for i,(layer2,p) in enumerate(layer_index_and_property):
             if layer2 == -1:
