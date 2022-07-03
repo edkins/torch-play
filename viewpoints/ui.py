@@ -68,6 +68,7 @@ class MainWindow:
         self.inp_clear = ttk.Button(self.inp_panel, text='X', width=1, command=lambda:self.select_test_image(None))
         self.inp_clear.grid(column=1, row=0, rowspan=2)
         self.inp_tensor = None
+        self.inp_y = None
         ttk.Label(self.inp_panel, text='Training:').grid(column=2, row=0)
         ttk.Label(self.inp_panel, text='Test:').grid(column=2, row=1)
         dimension, k = project.out_size[0]
@@ -115,7 +116,7 @@ class MainWindow:
             return
         if self.inp_tensor == None:
             return
-        onto_canvas(project, viewpoint, self.main_canvas, self.inp_tensor)
+        onto_canvas(project, viewpoint, self.main_canvas, self.inp_tensor, project.out_size[0][0], self.inp_y)
 
     def select_training_image(self, index: Optional[int]) -> None:
         project = self.project()
@@ -127,6 +128,7 @@ class MainWindow:
         self.inp_preview_img = ImageTk.PhotoImage(project.get_training_image(index).resize((150, 150), Image.NEAREST))
         self.inp_preview.configure(image=self.inp_preview_img)
         self.inp_tensor = project.get_training_x(index)
+        self.inp_y = project.get_training_y(index)
         self.populate_canvas()
 
     def select_test_image(self, index: Optional[int]) -> None:
@@ -139,6 +141,7 @@ class MainWindow:
         self.inp_preview_img = ImageTk.PhotoImage(project.get_test_image(index).resize((150, 150), Image.NEAREST))
         self.inp_preview.configure(image=self.inp_preview_img)
         self.inp_tensor = project.get_test_x(index)
+        self.inp_y = project.get_test_y(index)
         self.populate_canvas()
         
 
@@ -166,6 +169,7 @@ class MainWindow:
         if project.running:
             project.pause()
             self.train_button.configure(text='Train')
+            self.populate_canvas()
         else:
             self.train_button.configure(text='Pause')
             self.progress_bar.configure(maximum=project.max_epochs)

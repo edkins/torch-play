@@ -13,6 +13,7 @@ def get_palette(name: str, input: np.ndarray) -> np.ndarray:
     elif name == 'black-white':
         return input * np.ones((1,1,3))
     elif name == 'red-blue':
+        input = np.tanh(input)
         return np.ones((1,1,3)) + (input < 0) * input * np.array([[[0,1,1]]]) - (input >= 0) * input * np.array([[[1,1,0]]])
     else:
         raise ValueError(f'Unknown palette: {name}')

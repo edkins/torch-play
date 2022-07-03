@@ -173,6 +173,14 @@ class Project(Task):
         self.init_data_and_model()
         return self.test_data[index][0].refine_names(*[n for n,_ in self.in_size])
 
+    def get_training_y(self, index: int) -> int:
+        self.init_data_and_model()
+        return self.train_data[index][1]
+
+    def get_test_y(self, index: int) -> int:
+        self.init_data_and_model()
+        return self.test_data[index][1]
+
     def get_all_training_y(self):
         self.init_data_and_model()
         for X,y in self.train_data:

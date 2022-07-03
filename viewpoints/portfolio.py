@@ -23,6 +23,7 @@ def create_projects() -> list[Project]:
             viewpoints=[
                 Viewpoint('Input', layer=-1, x='x', y='y', size=30, palette='white-black'),
                 Viewpoint('Layer', layer=0, x='0', y='class_fashion', size=40, palette='red-blue', labels='class_fashion'),
+                Viewpoint('Output', layer=1, x='0', y='class_fashion', size=40, palette='black-white', labels='class_fashion'),
             ],
             train_preview=ImageViewpoint(x='x',y='y',palette='white-black')
         ),

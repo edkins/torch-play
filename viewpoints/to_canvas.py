@@ -1,4 +1,5 @@
 import tkinter as tk
+from typing import Optional
 import numpy as np
 import torch
 
@@ -11,7 +12,7 @@ def rescale(x: np.ndarray):
         return np.zeros(x.shape)
     return (x - x.min()) / (x.max() - x.min())
 
-def onto_canvas(project: Project, viewpoint: Viewpoint, canvas: tk.Canvas, tensor: torch.Tensor):
+def onto_canvas(project: Project, viewpoint: Viewpoint, canvas: tk.Canvas, tensor: torch.Tensor, output_dimension: Optional[str], correct_output_index: Optional[int]):
     layer_index_and_property = [
         (viewpoint.layer, viewpoint.x),
         (viewpoint.layer, viewpoint.y),
@@ -37,6 +38,10 @@ def onto_canvas(project: Project, viewpoint: Viewpoint, canvas: tk.Canvas, tenso
         r,g,b = arrays[2][i]
         if viewpoint.labels is not None:
             label = CLASS_LABELS[viewpoint.labels][label_indices[i]]
-            canvas.create_text(x + size*1.5, y + size*0.5, text=label, fill='black', anchor='w')
+            if output_dimension != None and correct_output_index != None and output_dimension == viewpoint.labels and correct_output_index == label_indices[i]:
+                weight = 'bold'
+            else:
+                weight = 'normal'
+            canvas.create_text(x + size*1.5, y + size*0.5, text=label, fill='black', anchor='w', font=('Helvetica', '10', weight))
         canvas.create_rectangle(x+1, y+1, x+size-1, y+size-1, fill=f'#{r:02x}{g:02x}{b:02x}', outline='')
     
