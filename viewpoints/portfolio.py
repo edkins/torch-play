@@ -21,8 +21,8 @@ def create_projects() -> list[Project]:
                 torch.nn.Softmax(dim=1),
             ],
             viewpoints=[
-                Viewpoint('Input'),
+                Viewpoint('Input', layer=-1, x='x', y='y', palette='white-black'),
             ],
-            train_preview=ImageViewpoint(x='x',y='y',invert=True),
+            train_preview=ImageViewpoint(x='x',y='y',palette='white-black')
         ),
     ]

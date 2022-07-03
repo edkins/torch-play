@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence, Tuple
 import torchvision
 import torch
 import PIL
@@ -54,6 +54,12 @@ class Project(Task):
         # Things that aren't involved in the training process but are used for visualization
         self.viewpoints = viewpoints
         self.train_preview = train_preview
+
+    def get_viewpoint(self, name: str) -> Optional[Viewpoint]:
+        for v in self.viewpoints:
+            if v.name == name:
+                return v
+        return None
 
     def init_data_and_model(self) -> None:
         if self.train_data != None:
@@ -159,6 +165,14 @@ class Project(Task):
         self.init_data_and_model()
         return self.train_preview.to_image(self.test_data[index][0])
 
+    def get_training_x(self, index: int) -> torch.Tensor:
+        self.init_data_and_model()
+        return self.train_data[index][0].refine_names(*[n for n,_ in self.in_size])
+
+    def get_test_x(self, index: int) -> torch.Tensor:
+        self.init_data_and_model()
+        return self.test_data[index][0].refine_names(*[n for n,_ in self.in_size])
+
     def get_all_training_y(self):
         self.init_data_and_model()
         for X,y in self.train_data:
@@ -168,3 +182,38 @@ class Project(Task):
         self.init_data_and_model()
         for X,y in self.test_data:
             yield y
+
+    def get_tensor_property(self, x:torch.Tensor, property_name: str) -> torch.Tensor:
+        if property_name == 'activation':
+            return x.to('cpu')
+        elif property_name in x.names:
+            dims = [(x.shape[i] if n == property_name else 1) for i,n in enumerate(x.names)]
+            r = torch.arange(x.size(property_name), dtype=torch.int64).reshape(*dims).refine_names(*x.names)
+            ones = torch.ones(x.size(), dtype=torch.int64).refine_names(*x.names)
+            return ones * r
+        else:
+            raise ValueError(f"Unknown tensor property: {property_name}")
+
+    def get_layer_properties(self, x:torch.Tensor, layer_index_and_property: Sequence[Tuple[int,str]]) -> list[torch.Tensor]:
+        self.init_data_and_model()
+        max_layer = max(layer for layer,p in layer_index_and_property)
+        results = [None] * len(layer_index_and_property)
+        x = x.to(self.device)
+
+        for i,(layer2,p) in enumerate(layer_index_and_property):
+            if layer2 == -1:
+                results[i] = self.get_tensor_property(x, p)
+
+        if max_layer >= 0:
+            temp_model = self.manufacture_model(self.model.state_dict()).to(self.device)
+            temp_model.eval()
+            for layer in range(max_layer + 1):
+                x = temp_model.layers[layer](x)
+                for i,(layer2,p) in enumerate(layer_index_and_property):
+                    if layer2 == layer:
+                        results[i] = self.get_tensor_property(x, p)
+
+        if None in results:
+            raise Exception("Something went wrong: None in result")
+
+        return results

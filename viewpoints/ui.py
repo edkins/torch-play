@@ -8,11 +8,12 @@ from portfolio import create_projects, CLASS_LABELS
 from project import Project
 from tasks import TaskManager
 from image_dropdown import ImageDropdown
+from to_canvas import onto_canvas
 
 class MainWindow:
     def __init__(self):
         self.win = tk.Tk()
-        self.win.geometry('1600x800')
+        self.win.geometry('2000x1600')
         self.win.title('Machine learning visualizer - Viewpoints')
         self.task_manager = TaskManager(self.win)
 
@@ -30,6 +31,7 @@ class MainWindow:
         ttk.Label(top_panel, text='Viewpoint:').grid(column=2, row=0)
         self.viewpoint_combo = ttk.Combobox(top_panel, values=[], state='readonly', textvariable=self.viewpoint_name)
         self.viewpoint_combo.grid(column=3, row=0)
+        self.viewpoint_combo.bind('<<ComboboxSelected>>', lambda e: self.populate_canvas())
         self.populate_viewpoints()
 
         train_panel = ttk.Frame(self.win)
@@ -46,7 +48,9 @@ class MainWindow:
         self.populate_inp_panel()
 
         main_panel = ttk.Frame(self.win)
-        main_panel.grid(column=0, row=2)
+        main_panel.grid(column=0, row=3)
+        self.main_canvas = tk.Canvas(main_panel, width=2000, height=1000)
+        self.main_canvas.grid(column=0, row=0)
 
     def change_project(self) -> None:
         self.populate_viewpoints()
@@ -63,6 +67,7 @@ class MainWindow:
         self.inp_preview.grid(column=0, row=0, rowspan=2)
         self.inp_clear = ttk.Button(self.inp_panel, text='X', width=1, command=lambda:self.select_test_image(None))
         self.inp_clear.grid(column=1, row=0, rowspan=2)
+        self.inp_tensor = None
         ttk.Label(self.inp_panel, text='Training:').grid(column=2, row=0)
         ttk.Label(self.inp_panel, text='Test:').grid(column=2, row=1)
         dimension, k = project.out_size[0]
@@ -100,23 +105,41 @@ class MainWindow:
                 onchange = self.select_test_image,
             ).grid(column=category+3, row=1)
 
+    def populate_canvas(self) -> None:
+        self.main_canvas.delete('all')
+        project = self.project()
+        if project == None:
+            return
+        viewpoint = project.get_viewpoint(self.viewpoint_name.get())
+        if viewpoint == None:
+            return
+        if self.inp_tensor == None:
+            return
+        onto_canvas(project, viewpoint, self.main_canvas, self.inp_tensor)
+
     def select_training_image(self, index: Optional[int]) -> None:
         project = self.project()
         if project == None or index == None:
             self.inp_preview_img = None
             self.inp_preview.configure(image=None)
+            self.inp_tensor = None
             return
         self.inp_preview_img = ImageTk.PhotoImage(project.get_training_image(index).resize((150, 150), Image.NEAREST))
         self.inp_preview.configure(image=self.inp_preview_img)
+        self.inp_tensor = project.get_training_x(index)
+        self.populate_canvas()
 
     def select_test_image(self, index: Optional[int]) -> None:
         project = self.project()
         if project == None or index == None:
             self.inp_preview_img = None
             self.inp_preview.configure(image=None)
+            self.inp_tensor = None
             return
         self.inp_preview_img = ImageTk.PhotoImage(project.get_test_image(index).resize((150, 150), Image.NEAREST))
         self.inp_preview.configure(image=self.inp_preview_img)
+        self.inp_tensor = project.get_test_x(index)
+        self.populate_canvas()
         
 
     def populate_viewpoints(self) -> None:
