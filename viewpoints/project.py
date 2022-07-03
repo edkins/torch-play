@@ -2,6 +2,8 @@ from typing import Any, Callable, Optional, Sequence, Tuple
 import torchvision
 import torch
 import PIL
+import os
+import json
 
 from tasks import TaskManager, Task
 from layers import NamedShape, SAMPLE
@@ -82,14 +84,21 @@ class Project(Task):
         model = ExperimentModel(self.layers)
         if state_dict != None:
             model.load_state_dict(state_dict)
+        else:
+            filename = self.get_parameter_filename()
+            if os.path.exists(filename):
+                with open(filename, 'r') as f:
+                    json_dict = json.load(f)
+                state_dict = {}
+                for key,value in json_dict.items():
+                    state_dict[key] = torch.tensor(value)
+                model.load_state_dict(state_dict)
         return model
 
     def start_training(self, task_manager: TaskManager, progress_callback: Callable) -> None:
         if self.finished:
             return
         self.init_data_and_model()
-        if self.generator == None:
-            self.generator = self.run_yield()
         self.running = True
         self.task_manager = task_manager
         self.progress_callback = progress_callback
@@ -100,24 +109,43 @@ class Project(Task):
         self.task_manager = None
     
     def tick(self) -> bool:
-        if not self.running or self.generator == None:
+        if not self.running:
             return False
+        if self.finished or self.num_epochs_completed >= self.max_epochs:
+            self.finished = True
+            self.running = False
+            self.generator = None
+            return False
+        if self.generator == None:
+            self.generator = self.run_yield()
         try:
             next(self.generator)
             return True
         except StopIteration:
-            self.running = False
-            self.finished = True
-            return False
+            self.generator = self.run_yield()
+            return True
 
     def run_yield(self):
-        for i in range(self.max_epochs):
-            for _ in self.train_epoch():
-                yield None
-            for _ in self.test_epoch():
-                yield None
-            self.num_epochs_completed = i + 1
-            #self.records.store_state_dict(self.epoch, self.model.state_dict())
+        for _ in self.train_epoch():
+            yield None
+        for _ in self.test_epoch():
+            yield None
+        self.save_state_dict()
+        self.num_epochs_completed += 1
+
+    def save_state_dict(self):
+        state_dict = self.model.state_dict()
+        json_dict = {}
+        for key,value in state_dict.items():
+            json_dict[key] = value.tolist()
+        os.makedirs('./parameters', exist_ok=True)
+        filename = self.get_parameter_filename()
+        with open(filename, 'w') as f:
+            json.dump(json_dict, f)
+        print(f'Saved {filename}')
+
+    def get_parameter_filename(self) -> str:
+        return f"./parameters/{self.name}.json"
 
     def train_epoch(self):
         size = len(self.train_data)
