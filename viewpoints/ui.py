@@ -51,10 +51,13 @@ class MainWindow:
         main_panel.grid(column=0, row=3)
         self.main_canvas = tk.Canvas(main_panel, width=2000, height=1000)
         self.main_canvas.grid(column=0, row=0)
+        
+        self.populate_progress_bar()
 
     def change_project(self) -> None:
         self.populate_viewpoints()
         self.populate_inp_panel()
+        self.populate_progress_bar()
 
     def populate_inp_panel(self) -> None:
         if self.inp_panel != None:
@@ -179,6 +182,15 @@ class MainWindow:
         project = self.project()
         if project == None:
             return
+        self.progress_bar.step(project.num_epochs_completed - self.displayed_progress)
+        self.displayed_progress = project.num_epochs_completed
+
+    def populate_progress_bar(self) -> None:
+        project = self.project()
+        if project == None:
+            self.progress_bar.configure(maximum=0)
+            return
+        self.progress_bar.configure(maximum=project.max_epochs)
         self.progress_bar.step(project.num_epochs_completed - self.displayed_progress)
         self.displayed_progress = project.num_epochs_completed
 

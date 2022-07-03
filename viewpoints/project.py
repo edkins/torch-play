@@ -90,9 +90,12 @@ class Project(Task):
                 with open(filename, 'r') as f:
                     json_dict = json.load(f)
                 state_dict = {}
-                for key,value in json_dict.items():
+                for key,value in json_dict['parameters'].items():
                     state_dict[key] = torch.tensor(value)
                 model.load_state_dict(state_dict)
+                self.num_epochs_completed = json_dict['num_epochs_completed']
+            else:
+                self.num_epochs_completed = 0
         return model
 
     def start_training(self, task_manager: TaskManager, progress_callback: Callable) -> None:
@@ -130,8 +133,8 @@ class Project(Task):
             yield None
         for _ in self.test_epoch():
             yield None
-        self.save_state_dict()
         self.num_epochs_completed += 1
+        self.save_state_dict()
 
     def save_state_dict(self):
         state_dict = self.model.state_dict()
@@ -141,7 +144,10 @@ class Project(Task):
         os.makedirs('./parameters', exist_ok=True)
         filename = self.get_parameter_filename()
         with open(filename, 'w') as f:
-            json.dump(json_dict, f)
+            json.dump({
+                'parameters':json_dict,
+                'num_epochs_completed':self.num_epochs_completed
+            }, f)
         print(f'Saved {filename}')
 
     def get_parameter_filename(self) -> str:
