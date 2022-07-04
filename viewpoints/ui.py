@@ -28,7 +28,7 @@ class MainWindow:
         self.project_combo = ttk.Combobox(top_panel, values=list(sorted(p.name for p in self.projects)), state='readonly', textvariable=self.project_name)
         self.project_combo.grid(column=1, row=0)
         self.project_combo.bind('<<ComboboxSelected>>', lambda e: self.change_project())
-        ttk.Label(top_panel, text='Viewpoint:').grid(column=2, row=0)
+        ttk.Label(top_panel, text='View:').grid(column=2, row=0)
         self.viewpoint_combo = ttk.Combobox(top_panel, values=[], state='readonly', textvariable=self.viewpoint_name)
         self.viewpoint_combo.grid(column=3, row=0)
         self.viewpoint_combo.bind('<<ComboboxSelected>>', lambda e: self.populate_canvas())
