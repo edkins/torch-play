@@ -28,3 +28,6 @@ class MyFashionMNIST(torchvision.datasets.FashionMNIST):
                 x = self.data_gpu[i:i+batch_size].float() / 255.0
                 y = self.targets[i:i+batch_size].long()
                 yield x, y
+
+    def get_big_batch_for_tsne(self) -> torch.Tensor:
+        return self.data_gpu[:1024].float() / 255.0

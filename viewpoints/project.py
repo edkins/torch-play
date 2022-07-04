@@ -3,6 +3,9 @@ import torch
 import PIL
 import os
 import json
+import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 
 from tasks import TaskManager, Task
 from layers import NamedShape, SAMPLE
@@ -213,11 +216,15 @@ class Project(Task):
         self.init_data_and_model()
         return self.test_data.get_all_y().numpy()
 
-    def get_tensor_property(self, x:torch.Tensor, property_name: str) -> torch.Tensor:
+    def get_tensor_property(self, x:torch.Tensor, property_name: str, tsne:Optional[torch.Tensor]=None) -> torch.Tensor:
         if property_name == 'activation':
             return x.detach().to('cpu')
         elif property_name == '0':
             return torch.zeros_like(x).to('cpu')
+        elif property_name == 'tsne_x':
+            return tsne[:,0].to('cpu')
+        elif property_name == 'tsne_y':
+            return tsne[:,1].to('cpu')
         elif property_name in x.names:
             dims = [(x.shape[i] if n == property_name else 1) for i,n in enumerate(x.names)]
             r = torch.arange(x.size(property_name), dtype=torch.float).reshape(*dims).refine_names(*x.names)
@@ -235,21 +242,44 @@ class Project(Task):
     def get_layer_properties(self, x:torch.Tensor, layer_index_and_property: Sequence[Tuple[int,str]]) -> list[torch.Tensor]:
         self.init_data_and_model()
         max_layer = max(layer for layer,p in layer_index_and_property)
+        tsne_layer = None
         results = [None] * len(layer_index_and_property)
-        x = self.identical_batch(x.detach()).to(self.device)
+        x = x.rename(None).reshape((1,) + x.size()).refine_names(SAMPLE, *x.names).to(self.device)
 
-        for i,(layer2,p) in enumerate(layer_index_and_property):
-            if layer2 == -1:
-                results[i] = self.get_tensor_property(x, p)
+        for layer,p in layer_index_and_property:
+            if p == 'tsne_x' or p == 'tsne_y_':
+                if tsne_layer == None:
+                    tsne_layer = layer
+                elif tsne_layer != layer:
+                    raise ValueError(f"Can't use different layers for tsne: {tsne_layer} and {layer}")
 
         if max_layer >= 0:
             temp_model = self.manufacture_model(self.model.state_dict()).to(self.device)
             temp_model.eval()
-            for layer in range(max_layer + 1):
-                x = temp_model.layers[layer](x)
-                for i,(layer2,p) in enumerate(layer_index_and_property):
-                    if layer2 == layer:
-                        results[i] = self.get_tensor_property(x, p)
+
+        if tsne_layer != None:
+            bigbatch = self.train_data.get_big_batch_for_tsne()
+            for _ in range(tsne_layer + 1):
+                bigbatch = temp_model.layers[layer](bigbatch)
+            #bigbatch = temp_model.layers[tsne_layer].weights_as_matrix()
+            bigbatch = bigbatch.detach().rename(None).reshape((bigbatch.shape[0], np.product(*bigbatch.shape[1:]))).transpose(1,0).cpu().numpy()
+            tsne_xy = torch.tensor(TSNE(n_components=2, perplexity=5, init='pca').fit_transform(bigbatch))
+        else:
+            tsne_xy = None
+
+        for i,(layer2,p) in enumerate(layer_index_and_property):
+            if layer2 == -1:
+                results[i] = self.get_tensor_property(x, p, tsne=tsne_xy)
+
+        for layer in range(max_layer + 1):
+            x = temp_model.layers[layer](x)
+            for i,(layer2,p) in enumerate(layer_index_and_property):
+                if layer2 == layer:
+                    results[i] = self.get_tensor_property(x, p, tsne=tsne_xy)
+
+        # print("Results of get_layer_properties:")
+        # for result in results:
+        #     print(result.size())
 
         if None in results:
             raise Exception("Something went wrong: None in result")

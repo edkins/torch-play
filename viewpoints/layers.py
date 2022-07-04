@@ -24,3 +24,6 @@ class FlattenLinear(torch.nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.unflatten(self.linear(self.flatten(x.rename(None)))).refine_names(*self.out_names)
         #return self.unflatten(self.linear(self.flatten(x.rename(None))))
+
+    def weights_as_matrix(self) -> torch.Tensor:
+        return self.linear.weight.detach().reshape(self.linear.in_features, self.linear.out_features).cpu()
