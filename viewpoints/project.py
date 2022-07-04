@@ -1,5 +1,4 @@
 from typing import Any, Callable, Optional, Sequence, Tuple
-import torchvision
 import torch
 import PIL
 import os
@@ -68,17 +67,10 @@ class Project(Task):
             return
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.train_data = self.dataset_class(root='./data', train=True, download=True, transform=self.to_tensor)
-        self.test_data = self.dataset_class(root='./data', train=False, download=True, transform=self.to_tensor)
+        self.train_data = self.dataset_class(root='./data', train=True, device=self.device)
+        self.test_data = self.dataset_class(root='./data', train=False, device=self.device)
         self.model = self.manufacture_model(state_dict=None).to(self.device)
         self.optimizer = self.optimizer_fn(self.model.parameters())
-
-    def to_tensor(self, x: Any) -> torch.Tensor:
-        tensor = torchvision.transforms.ToTensor()(x)
-        # Don't like the dummy single-element dimension for greyscale images
-        if len(tensor.shape) == 3 and len(self.in_size) == 2 and tensor.shape[0] == 1:
-            return tensor[0]
-        return tensor
 
     def manufacture_model(self, state_dict:Optional[dict[str,torch.Tensor]] = None) -> ExperimentModel:
         model = ExperimentModel(self.layers)
@@ -157,9 +149,8 @@ class Project(Task):
         size = len(self.train_data)
         # Set to training mode
         self.model.train()
-        dataloader = torch.utils.data.DataLoader(self.train_data, batch_size=self.batch_size, shuffle=True)
-        for batch_num, (X, y) in enumerate(dataloader):
-            X, y = X.refine_names(SAMPLE, *[n for n,_ in self.in_size]).to(self.device), y.to(self.device)
+        for batch_num, (X, y) in enumerate(self.train_data.get_all_xy_in_batches(self.batch_size, shuffle=True)):
+            X, y = X.refine_names(SAMPLE, *[n for n,_ in self.in_size]), y.to(self.device)
             # Compute prediction error
             pred = self.model(X).rename(None)
             loss = self.loss_fn(pred, y)
@@ -173,17 +164,16 @@ class Project(Task):
                 print(f"loss: {loss:>7f} [{current:>5d}/{size:>5d}]")
                 if self.progress_callback != None:
                     self.progress_callback()
-            yield None
+                yield None
 
     def test_epoch(self):
         size = len(self.test_data)
         # Set to evaluation mode
         self.model.eval()
         correct = torch.zeros((), dtype=torch.int64).to(self.device)
-        dataloader = torch.utils.data.DataLoader(self.test_data, batch_size=self.batch_size, shuffle=False)
         with torch.no_grad():
-            for batch_num, (X, y) in enumerate(dataloader):
-                X, y = X.refine_names(SAMPLE, *[n for n,_ in self.in_size]).to(self.device), y.to(self.device)
+            for batch_num, (X, y) in enumerate(self.test_data.get_all_xy_in_batches(self.batch_size, shuffle=False)):
+                X, y = X.refine_names(SAMPLE, *[n for n,_ in self.in_size]), y.to(self.device)
                 # Compute prediction error
                 pred = self.model(X).rename(None)
                 predicted = pred.argmax(dim=1)
@@ -217,13 +207,11 @@ class Project(Task):
 
     def get_all_training_y(self):
         self.init_data_and_model()
-        for X,y in self.train_data:
-            yield y
+        return self.train_data.get_all_y().numpy()
     
     def get_all_test_y(self):
         self.init_data_and_model()
-        for X,y in self.test_data:
-            yield y
+        return self.test_data.get_all_y().numpy()
 
     def get_tensor_property(self, x:torch.Tensor, property_name: str) -> torch.Tensor:
         if property_name == 'activation':
