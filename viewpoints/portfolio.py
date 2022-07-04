@@ -28,6 +28,7 @@ def create_projects() -> list[Project]:
                 Viewpoint('Layer', layer=0, x='0', y='class_fashion', size=40, palette='red-blue', labels='class_fashion'),
                 Viewpoint('Layer TSNE', layer=0, x='tsne_x', y='tsne_y', size=40, palette='red-blue', labels='class_fashion'),
                 Viewpoint('Output', layer=1, x='0', y='class_fashion', size=40, palette='black-white', labels='class_fashion'),
+                Viewpoint('Output TSNE', layer=1, x='tsne_x', y='tsne_y', size=40, palette='black-white', labels='class_fashion'),
             ],
             train_preview=ImageViewpoint(x='x',y='y',palette='white-black')
         ),

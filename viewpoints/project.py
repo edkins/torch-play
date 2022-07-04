@@ -259,8 +259,8 @@ class Project(Task):
 
         if tsne_layer != None:
             bigbatch = self.train_data.get_big_batch_for_tsne()
-            for _ in range(tsne_layer + 1):
-                bigbatch = temp_model.layers[layer](bigbatch)
+            for layer2 in range(tsne_layer + 1):
+                bigbatch = temp_model.layers[layer2](bigbatch)
             #bigbatch = temp_model.layers[tsne_layer].weights_as_matrix()
             bigbatch = bigbatch.detach().rename(None).reshape((bigbatch.size()[0], np.product(bigbatch.size()[1:]))).transpose(1,0).cpu().numpy()
             tsne_xy = torch.tensor(TSNE(n_components=2, perplexity=5, init='pca').fit_transform(bigbatch))
