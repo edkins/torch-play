@@ -13,7 +13,7 @@ def _mnist(data:str) -> Callable[[],DataAdapter]:
         raise ValueError(f'Unknown data type: {data}')
 
 def mnist_linear(data:str='mnist', **kwargs) -> Model:
-    return Model(_mnist(data), lambda:LinearSoftmax(28*28, 10), **kwargs)
+    return Model(_mnist(data), lambda:LinearSoftmax(28, 28, 1, 10), **kwargs)
 
 def mnist_cnn(data:str='mnist', attempt:int=1, **kwargs) -> Model:
     if attempt == 1:
