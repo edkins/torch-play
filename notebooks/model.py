@@ -33,7 +33,12 @@ def save_parameters_json(filename: str, model_state_dict: dict[str, torch.Tensor
 
 
 class Model:
-    def __init__(self, data_fn: Callable[[],DataAdapter], model_fn: Callable[[],torch.nn.Module], device: str='default', batch_size=64):
+    def __init__(self,
+            data_fn: Callable[[],DataAdapter],
+            model_fn: Callable[[],torch.nn.Module],
+            device: str='default',
+            record: bool=True,
+            batch_size=64):
         self.data_fn = data_fn
         self.train_data = None
         self.test_data = None
@@ -42,6 +47,7 @@ class Model:
         self.optimizer = None
         self.device = translate_device(device)
         self.batch_size = batch_size
+        self.record = record
         self.loss_fn = torch.nn.CrossEntropyLoss()
         self.num_epochs_completed = 0
 
@@ -56,6 +62,7 @@ class Model:
             print('Creating model...')
             self.model = self.model_fn().to(self.device)
             self.optimizer = torch.optim.Adam(self.model.parameters())
+            #self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01)
 
     def get_filename(self, epochs: int) -> str:
         self.load_data()
@@ -99,8 +106,9 @@ class Model:
             self._train_epoch()
             self.test()
             save_filename = self.get_filename(e)
-            save_parameters_json(save_filename, self.model.state_dict())
-            print(f"Saved model parameters to {save_filename}")
+            if self.record:
+                save_parameters_json(save_filename, self.model.state_dict())
+                print(f"Saved model parameters to {save_filename}")
             self.num_epochs_completed = e
             print(f'Completed epoch {e}')
         return self

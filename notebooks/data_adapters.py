@@ -18,10 +18,10 @@ class MNISTAdapter:
         self.targets_gpu = dataset.targets.to(device)
         self.name = dataset.__class__.__name__
     
-    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
-        x = self.data_gpu[index].float() / 255.0
-        y = self.targets_gpu[index]
-        return x, y
+    # def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
+    #     x = self.data_gpu[index].reshape((1,28,28)).float() / 255.0
+    #     y = self.targets_gpu[index]
+    #     return x, y
 
     def __len__(self) -> int:
         return len(self.data_gpu)
@@ -31,12 +31,14 @@ class MNISTAdapter:
             choices = random.choices(range(len(self.data_gpu)), k=len(self.data_gpu))
             for i in range(0, len(self.data_gpu), batch_size):
                 batch_indices = choices[i:i+batch_size]
-                x = self.data_gpu[batch_indices].float() / 255.0
+                x = self.data_gpu[batch_indices]
+                x = x.reshape((len(x),1,28,28)).float() / 255.0
                 y = self.targets_gpu[batch_indices]
                 yield x, y
         else:
             for i in range(0, len(self.data_gpu), batch_size):
-                x = self.data_gpu[i:i+batch_size].float() / 255.0
+                x = self.data_gpu[i:i+batch_size]
+                x = x.reshape((len(x),1,28,28)).float() / 255.0
                 y = self.targets_gpu[i:i+batch_size]
                 yield x, y
 
