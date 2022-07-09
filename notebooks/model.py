@@ -5,7 +5,7 @@ import os
 from typing import Callable, Optional
 from typing_extensions import Self
 import torch
-from data_adapters import DataAdapter, MNISTAdapter
+from data_adapters import DataAdapter
 
 def translate_device(device: str) -> torch.device:
     if device == 'default':
@@ -13,26 +13,23 @@ def translate_device(device: str) -> torch.device:
     else:
         return torch.device(device)
 
-def load_parameters_json(filename: str) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]]:
+def load_parameters_json(filename: str) -> dict[str, torch.Tensor]:
     with open(filename, 'r') as f:
         json_dicts = json.load(f)
     model_state_dict = {}
-    optimizer_state_dict = {}
     for key,value in json_dicts['model'].items():
         model_state_dict[key] = torch.tensor(value)
         print(key,model_state_dict[key].shape)
-    optimizer_state_dict = json_dicts['optimizer']
-    return model_state_dict, optimizer_state_dict
+    return model_state_dict
 
-def save_parameters_json(filename: str, model_state_dict: dict[str, torch.Tensor], optimizer_state_dict: dict[str, torch.Tensor]) -> None:
+def save_parameters_json(filename: str, model_state_dict: dict[str, torch.Tensor]) -> None:
     model_json_dict = {
         key: value.tolist() for key,value in model_state_dict.items()
     }
     print(model_json_dict.keys())
-    optimizer_json_dict = optimizer_state_dict
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'w') as f:
-        json.dump({'model': model_json_dict, 'optimizer': optimizer_json_dict}, f)
+        json.dump({'model': model_json_dict}, f)
 
 
 class Model:
@@ -93,9 +90,8 @@ class Model:
         self.load_model()
         filename, loaded_epoch = self.get_most_recent_filename(epochs)
         if filename is not None:
-            model_state_dict, optimizer_state_dict = load_parameters_json(filename)
+            model_state_dict = load_parameters_json(filename)
             self.model.load_state_dict(model_state_dict)
-            self.optimizer.load_state_dict(optimizer_state_dict)
             self.num_epochs_completed = loaded_epoch
             print(f"Loaded model parameters from {filename}")
             print(f"Loaded up to epoch {loaded_epoch}")
@@ -103,7 +99,7 @@ class Model:
             self._train_epoch()
             self.test()
             save_filename = self.get_filename(e)
-            save_parameters_json(save_filename, self.model.state_dict(), self.optimizer.state_dict())
+            save_parameters_json(save_filename, self.model.state_dict())
             print(f"Saved model parameters to {save_filename}")
             self.num_epochs_completed = e
             print(f'Completed epoch {e}')
