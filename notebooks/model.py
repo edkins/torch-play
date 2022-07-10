@@ -27,7 +27,7 @@ def load_parameters_json(filename: str) -> dict[str, torch.Tensor]:
 def rescale(array: np.ndarray) -> np.ndarray:
     return (array - array.min()) / (array.max() - array.min())
 
-def plot_tensor(img: torch.Tensor, title: str) -> None:
+def plot_tensor(img: torch.Tensor, title: str='') -> None:
     norm = mpl.colors.CenteredNorm()
     if len(img.size()) == 3:
         n_figures = img.size(0)
@@ -52,13 +52,16 @@ def plot_tensor(img: torch.Tensor, title: str) -> None:
     plt.suptitle(title)
     plt.show()
 
-def plot_tensor_grid(imgs: torch.Tensor, title: str, rgb: Optional[list[tuple[int]]] = None) -> None:
+def plot_tensor_grid(imgs: torch.Tensor, title: str='', rgb: Optional[list[tuple[int]]] = None, transpose: bool=False) -> None:
     n_rows = imgs.size(0)
     n_cols = imgs.size(1) if rgb==None else len(rgb)
     norm = mpl.colors.CenteredNorm()
     for row in range(n_rows):
         for col in range(n_cols):
-            plt.subplot(n_rows, n_cols, row*n_cols+col+1)
+            if transpose:
+                plt.subplot(n_cols, n_rows, col*n_rows+row+1)
+            else:
+                plt.subplot(n_rows, n_cols, row*n_cols+col+1)
             plt.xticks([])
             plt.yticks([])
             if rgb == None:
@@ -225,8 +228,18 @@ class Model:
             imgs = self.activations[layer].clip(-0.1,0)
         else:
             imgs = self.activations[layer+1]
-        plot_tensor_grid(imgs, title='', rgb=rgb)
+        plot_tensor_grid(imgs, rgb=rgb)
 
     def show_conv_parameters(self, layer: int) -> None:
         img = self.model.layers[layer].get_conv_parameters()
-        plot_tensor(img, title='')
+        plot_tensor(img)
+
+    def show_dense_parameters(self, layer: int, reshape_in: tuple[int,int,int], transpose: bool=False) -> None:
+        img = self.model.layers[layer].get_dense_parameters()
+        if img.size(1) != reshape_in[0] * reshape_in[1] * reshape_in[2]:
+            raise ValueError(f'img input size {img.size(1)} does not match reshape_in {reshape_in}')
+        plot_tensor_grid(img.view(img.size(0), reshape_in[0], reshape_in[1], reshape_in[2]))
+
+    @property
+    def classes(self) -> list[str]:
+        return self.train_data.classes

@@ -17,6 +17,7 @@ class MNISTAdapter:
         self.data_gpu = dataset.data.to(device)
         self.targets_gpu = dataset.targets.to(device)
         self.name = dataset.__class__.__name__
+        self.classes = dataset.classes
     
     # def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
     #     x = self.data_gpu[index].reshape((1,28,28)).float() / 255.0

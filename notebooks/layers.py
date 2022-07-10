@@ -28,6 +28,11 @@ class DenseLayer(torch.nn.Linear):
         super().__init__(in_size[0], out_features)
         self.size = (out_features,)
 
+    def get_dense_parameters(self) -> torch.Tensor:
+        if len(self.weight.size()) != 2:
+            raise ValueError('DenseLayer.weight must be 2D')
+        return self.weight.detach()
+
 class ReluLayer(torch.nn.ReLU):
     def __init__(self, in_size: tuple[int]):
         super().__init__()
