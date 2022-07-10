@@ -23,11 +23,14 @@ def load_parameters_json(filename: str) -> dict[str, torch.Tensor]:
         model_state_dict[key] = torch.tensor(value)
     return model_state_dict
 
-def plot_tensor(img: torch.Tensor) -> None:
+def rescale(array: np.ndarray) -> np.ndarray:
+    return (array - array.min()) / (array.max() - array.min())
+
+def plot_tensor(img: torch.Tensor, title: str) -> None:
     if len(img.size()) == 3:
         n_figures = img.size(0)
         for i in range(n_figures):
-            plt.subplot(n_figures, 1, i+1)
+            plt.subplot(1, n_figures, i+1)
             plt.imshow(img[i].to('cpu').numpy())
     elif len(img.size()) == 1:
         n = img.size(0)
@@ -39,6 +42,29 @@ def plot_tensor(img: torch.Tensor) -> None:
         plt.imshow(square.reshape((w,h)))
     else:
         raise ValueError('img dimensions must be 1 or 3')
+    plt.suptitle(title)
+    plt.show()
+
+def plot_tensor_grid(imgs: torch.Tensor, title: str, rgb: Optional[list[tuple[int]]] = None) -> None:
+    n_rows = imgs.size(0)
+    n_cols = imgs.size(1) if rgb==None else len(rgb)
+    for row in range(n_rows):
+        for col in range(n_cols):
+            plt.subplot(n_rows, n_cols, row*n_cols+col+1)
+            if rgb == None:
+                plt.imshow(imgs[row,col].to('cpu').numpy())
+            else:
+                r = imgs[row][rgb[col][0]]
+                g = imgs[row][rgb[col][1]]
+                b = imgs[row][rgb[col][2]]
+                plt.imshow(
+                    np.dstack((
+                        rescale(r.to('cpu').numpy()),
+                        rescale(g.to('cpu').numpy()),
+                        rescale(b.to('cpu').numpy()),
+                    ))
+                )
+    plt.suptitle(title)
     plt.show()
 
 def save_parameters_json(filename: str, model_state_dict: dict[str, torch.Tensor]) -> None:
@@ -176,8 +202,17 @@ class Model:
     def show_activation(self, index: int):
         if self.activations == None:
             raise Exception('Activations not computed')
-        for alayer in self.activations:
+        for aindex,alayer in enumerate(self.activations):
             img = alayer[index]
-            print(img.shape)
-            plot_tensor(img)
+            plot_tensor(img, title=f'Input {img.shape}' if aindex==0 else f'{aindex-1} {img.shape} {self.model.layers[aindex-1]}')
 
+
+    def show_activation_grid(self, layer: int, show_relu_activation: bool=False, rgb: Optional[list[tuple[int]]]=None):
+        if self.activations == None:
+            raise Exception('Activations not computed')
+
+        if show_relu_activation:
+            imgs = self.activations[layer].clip(-0.1,0)
+        else:
+            imgs = self.activations[layer+1]
+        plot_tensor_grid(imgs, title='', rgb=rgb)

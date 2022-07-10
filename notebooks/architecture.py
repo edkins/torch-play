@@ -41,3 +41,13 @@ class CNN1(LayeredModule):
         flatten = FlattenLayer(relu1.size)
         dense1 = DenseLayer(flatten.size, out_features)
         super().__init__(conv1, relu1, flatten, dense1)
+
+class CNN2(LayeredModule):
+    def __init__(self, in_w: int, in_h: int, in_channels: int, out_features: int):
+        super().__init__()
+        size = (in_channels, in_w, in_h)
+        conv1 = ConvLayer(size, out_channels=3, kernel_size=3, stride=1)
+        relu1 = ReluLayer(conv1.size)
+        flatten = FlattenLayer(relu1.size)
+        dense1 = DenseLayer(flatten.size, out_features)
+        super().__init__(conv1, relu1, flatten, dense1)
