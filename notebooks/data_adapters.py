@@ -43,11 +43,25 @@ class MNISTAdapter:
                 y = self.targets_gpu[i:i+batch_size]
                 yield x, y
     
-    def get_first_few_xy(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
-        x = self.data_gpu[:n]
-        x = x.reshape((len(x),1,28,28)).float() / 255.0
-        y = self.targets_gpu[:n]
-        return x, y
+    def get_first_few_xy(self, n: int | str) -> tuple[torch.Tensor, torch.Tensor]:
+        if isinstance(n, int):
+            x = self.data_gpu[:n]
+            x = x.reshape((len(x),1,28,28)).float() / 255.0
+            y = self.targets_gpu[:n]
+            return x, y
+        elif n == 'classes':
+            indices = [None] * len(self.classes)
+            remaining = len(self.classes)
+            for index, y in enumerate(self.targets_gpu):
+                if indices[y] == None:
+                    indices[y] = index
+                    remaining -= 1
+                    if remaining == 0:
+                        break
+            x = self.data_gpu[indices]
+            x = x.reshape((len(x),1,28,28)).float() / 255.0
+            y = self.targets_gpu[indices]
+            return x, y
 
     def __str__(self):
         return self.name

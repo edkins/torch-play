@@ -205,7 +205,7 @@ class Model:
         print (f"Test accuracy: {correct.item() / size:.2f}")
         return self
 
-    def activate(self, num_samples: int) -> Self:
+    def activate(self, num_samples: int | str) -> Self:
         self.load_data()
         self.load_model()
         self.model.eval()
