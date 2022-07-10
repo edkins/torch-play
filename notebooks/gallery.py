@@ -22,3 +22,15 @@ def mnist_cnn(data:str='mnist', attempt:int=1, **kwargs) -> Model:
         return Model(_mnist(data), lambda:CNN2(28, 28, 1, 10), **kwargs)
     else:
         raise ValueError(f'Unknown attempt: {attempt}')
+
+def srand(seed:int) -> None:
+    import random
+    random.seed(seed)
+    import numpy as np
+    np.random.seed(seed)
+    import torch
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.use_deterministic_algorithms(True)
+    

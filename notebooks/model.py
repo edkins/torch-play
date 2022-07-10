@@ -6,6 +6,7 @@ from typing import Callable, Optional
 from typing_extensions import Self
 import torch
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 from data_adapters import DataAdapter
 
@@ -27,11 +28,14 @@ def rescale(array: np.ndarray) -> np.ndarray:
     return (array - array.min()) / (array.max() - array.min())
 
 def plot_tensor(img: torch.Tensor, title: str) -> None:
+    norm = mpl.colors.CenteredNorm()
     if len(img.size()) == 3:
         n_figures = img.size(0)
         for i in range(n_figures):
             plt.subplot(1, n_figures, i+1)
-            plt.imshow(img[i].to('cpu').numpy())
+            plt.xticks([])
+            plt.yticks([])
+            plt.imshow(norm(img[i].to('cpu').numpy()), norm=mpl.colors.NoNorm(), cmap=mpl.cm.coolwarm)
     elif len(img.size()) == 1:
         n = img.size(0)
         w = math.ceil(math.sqrt(n))
@@ -39,7 +43,10 @@ def plot_tensor(img: torch.Tensor, title: str) -> None:
         plt.subplot(1, 1, 1)
         square = np.zeros((w*h,))
         square[:n] = img.to('cpu').numpy()
-        plt.imshow(square.reshape((w,h)))
+        # disable ticks and labels
+        plt.xticks([])
+        plt.yticks([])
+        plt.imshow(norm(square.reshape((w,h))), norm=mpl.colors.NoNorm(), cmap=mpl.cm.coolwarm)
     else:
         raise ValueError('img dimensions must be 1 or 3')
     plt.suptitle(title)
@@ -48,11 +55,14 @@ def plot_tensor(img: torch.Tensor, title: str) -> None:
 def plot_tensor_grid(imgs: torch.Tensor, title: str, rgb: Optional[list[tuple[int]]] = None) -> None:
     n_rows = imgs.size(0)
     n_cols = imgs.size(1) if rgb==None else len(rgb)
+    norm = mpl.colors.CenteredNorm()
     for row in range(n_rows):
         for col in range(n_cols):
             plt.subplot(n_rows, n_cols, row*n_cols+col+1)
+            plt.xticks([])
+            plt.yticks([])
             if rgb == None:
-                plt.imshow(imgs[row,col].to('cpu').numpy())
+                plt.imshow(norm(imgs[row,col].to('cpu').numpy()), norm=mpl.colors.NoNorm(), cmap=mpl.cm.coolwarm)
             else:
                 r = imgs[row][rgb[col][0]]
                 g = imgs[row][rgb[col][1]]
@@ -199,7 +209,7 @@ class Model:
         self.activations = self.model.forward_steps(X)
         return self
 
-    def show_activation(self, index: int):
+    def show_activation(self, index: int) -> None:
         if self.activations == None:
             raise Exception('Activations not computed')
         for aindex,alayer in enumerate(self.activations):
@@ -207,7 +217,7 @@ class Model:
             plot_tensor(img, title=f'Input {img.shape}' if aindex==0 else f'{aindex-1} {img.shape} {self.model.layers[aindex-1]}')
 
 
-    def show_activation_grid(self, layer: int, show_relu_activation: bool=False, rgb: Optional[list[tuple[int]]]=None):
+    def show_activation_grid(self, layer: int, show_relu_activation: bool=False, rgb: Optional[list[tuple[int]]]=None) -> None:
         if self.activations == None:
             raise Exception('Activations not computed')
 
@@ -216,3 +226,7 @@ class Model:
         else:
             imgs = self.activations[layer+1]
         plot_tensor_grid(imgs, title='', rgb=rgb)
+
+    def show_conv_parameters(self, layer: int) -> None:
+        img = self.model.layers[layer].get_conv_parameters()
+        plot_tensor(img, title='')

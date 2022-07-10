@@ -13,6 +13,11 @@ class ConvLayer(torch.nn.Conv2d):
             (in_size[2] - kernel_size)//stride + 1
         )
 
+    def get_conv_parameters(self) -> torch.Tensor:
+        if len(self.weight.size()) != 4:
+            raise ValueError('ConvLayer.weight must be 4D')
+        return self.weight.detach().view(self.weight.size(0) * self.weight.size(1), self.weight.size(2), self.weight.size(3))
+
 class FlattenLayer(torch.nn.Flatten):
     def __init__(self, in_size: tuple[int,int,int]):
         super().__init__(start_dim=1)
