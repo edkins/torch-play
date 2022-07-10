@@ -15,6 +15,13 @@ class LayeredModule(torch.nn.Module):
             x = layer(x)
         return self.softmax(x)
 
+    def forward_steps(self, x: torch.Tensor) -> list[torch.Tensor]:
+        result = [x.detach()]
+        for layer in self.layers:
+            x = layer(x)
+            result.append(x.detach())
+        return result
+
     def __str__(self):
         return self.__class__.__name__
 

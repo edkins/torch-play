@@ -1,10 +1,12 @@
-from __future__ import annotations
-
 import json
 import os
+import math
+import numpy as np
 from typing import Callable, Optional
 from typing_extensions import Self
 import torch
+import matplotlib.pyplot as plt
+
 from data_adapters import DataAdapter
 
 def translate_device(device: str) -> torch.device:
@@ -19,14 +21,30 @@ def load_parameters_json(filename: str) -> dict[str, torch.Tensor]:
     model_state_dict = {}
     for key,value in json_dicts['model'].items():
         model_state_dict[key] = torch.tensor(value)
-        print(key,model_state_dict[key].shape)
     return model_state_dict
+
+def plot_tensor(img: torch.Tensor) -> None:
+    if len(img.size()) == 3:
+        n_figures = img.size(0)
+        for i in range(n_figures):
+            plt.subplot(n_figures, 1, i+1)
+            plt.imshow(img[i].to('cpu').numpy())
+    elif len(img.size()) == 1:
+        n = img.size(0)
+        w = math.ceil(math.sqrt(n))
+        h = math.ceil(n/w)
+        plt.subplot(1, 1, 1)
+        square = np.zeros((w*h,))
+        square[:n] = img.to('cpu').numpy()
+        plt.imshow(square.reshape((w,h)))
+    else:
+        raise ValueError('img dimensions must be 1 or 3')
+    plt.show()
 
 def save_parameters_json(filename: str, model_state_dict: dict[str, torch.Tensor]) -> None:
     model_json_dict = {
         key: value.tolist() for key,value in model_state_dict.items()
     }
-    print(model_json_dict.keys())
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'w') as f:
         json.dump({'model': model_json_dict}, f)
@@ -50,6 +68,7 @@ class Model:
         self.record = record
         self.loss_fn = torch.nn.CrossEntropyLoss()
         self.num_epochs_completed = 0
+        self.activations = None
 
     def load_data(self):
         if self.train_data is None:
@@ -95,6 +114,7 @@ class Model:
     def train(self, epochs: int) -> Self:
         self.load_data()
         self.load_model()
+        self.activations = None
         filename, loaded_epoch = self.get_most_recent_filename(epochs)
         if filename is not None:
             model_state_dict = load_parameters_json(filename)
@@ -144,3 +164,20 @@ class Model:
                 correct += (predicted == y).sum()
         print (f"Test accuracy: {correct.item() / size:.2f}")
         return self
+
+    def activate(self, num_samples: int) -> Self:
+        self.load_data()
+        self.load_model()
+        self.model.eval()
+        X, y = self.train_data.get_first_few_xy(num_samples)
+        self.activations = self.model.forward_steps(X)
+        return self
+
+    def show_activation(self, index: int):
+        if self.activations == None:
+            raise Exception('Activations not computed')
+        for alayer in self.activations:
+            img = alayer[index]
+            print(img.shape)
+            plot_tensor(img)
+
