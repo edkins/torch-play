@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 from data_adapters import DataAdapter
+from image_grid import ImageGrid
 
 def translate_device(device: str) -> torch.device:
     if device == 'default':
@@ -238,7 +239,24 @@ class Model:
         img = self.model.layers[layer].get_dense_parameters()
         if img.size(1) != reshape_in[0] * reshape_in[1] * reshape_in[2]:
             raise ValueError(f'img input size {img.size(1)} does not match reshape_in {reshape_in}')
-        plot_tensor_grid(img.view(img.size(0), reshape_in[0], reshape_in[1], reshape_in[2]))
+        plot_tensor_grid(img.view(img.size(0), reshape_in[0], reshape_in[1], reshape_in[2]), transpose=transpose)
+
+    def get_activation_grid(self, layer: int) -> ImageGrid:
+        if self.activations == None:
+            raise Exception('Activations not computed')
+        return ImageGrid(self.activations[layer+1])
+
+    def get_conv_parameters(self, layer: int) -> ImageGrid:
+        img = self.model.layers[layer].get_conv_parameters()
+        if len(img.size()) != 3:
+            raise ValueError(f'img input size {img.size()} does not match expected size 3')
+        return ImageGrid(img.reshape(img.size(0), 1, img.size(1), img.size(2))).transpose()
+
+    def get_dense_parameters(self, layer: int, reshape_in: tuple[int,int,int]) -> ImageGrid:
+        img = self.model.layers[layer].get_dense_parameters()
+        if img.size(1) != reshape_in[0] * reshape_in[1] * reshape_in[2]:
+            raise ValueError(f'img input size {img.size(1)} does not match reshape_in {reshape_in}')
+        return ImageGrid(img.view(img.size(0), reshape_in[0], reshape_in[1], reshape_in[2])).transpose()
 
     @property
     def classes(self) -> list[str]:
