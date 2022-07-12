@@ -36,11 +36,13 @@ class ImageGrid:
     def plot(self, figsize:tuple[int,int]=(6,6), title: str='', norm:str='all') -> None:
         mpl.rcParams['figure.figsize'] = figsize
         if norm == 'all':
-            normed_data = mpl.colors.CenteredNorm()(self.tensor.to('cpu').numpy())
+            data = self.tensor.to('cpu').numpy()
+            normed_data = mpl.colors.SymLogNorm(1, 2)(data.reshape(-1)).reshape(data.shape)
         elif norm == 'cols':
             normed_data = self.tensor.to('cpu').numpy()
+            shape = (normed_data.shape[0],) + normed_data.shape[2:]
             for c in range(self.ncols):
-                normed_data[:,c] = mpl.colors.CenteredNorm()(normed_data[:,c])
+                normed_data[:,c] = mpl.colors.SymLogNorm(1, 2)(normed_data[:,c].reshape(-1)).reshape(shape)
         else:
             raise ValueError(f'ImageGrid.plot norm must be "all" or "cols" not {norm}')
         for row in range(self.nrows):
