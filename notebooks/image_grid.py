@@ -6,32 +6,20 @@ from sklearn.decomposition import PCA, NMF
 
 _positive_colors = [
     (1, 1, 1),    # white
-    (1, 0.5, 1),  # pink
-    (1, 0, 1),    # magenta
-    (1, 0, 0.5),  # raspberry
     (1, 0, 0),    # red
-    (1, 0.5, 0),  # orange
-    (1, 1, 0),    # yellow
-    (0.7, 0.5, 0),# gold
     (0, 0, 0),    # black
 ]
 
 _negative_colors = [
     (1, 1, 1),    # white
-    (0.5, 0.7, 1),# light blue
-    (0.0, 0.4, 1),# mid blue
-    (0, 0, 1),    # dark blue
-    (0, 0.5, 0.5),# teal
-    (0, 1, 1),    # cyan
-    (0, 1, 0),    # green
-    (0, 0.5, 0),  # dark green
-    (0.5, 0.5, 0),# olive
+    (0, 0, 1),    # blue
+    (0.1, 0.1, 0.1) # grey
 ]
 
-_maximum = 2 ** len(_positive_colors)
+_maximum = (4 ** (len(_positive_colors)-1)) / 2
 
 _mappings = {
-    color: [(0.5 - (2**i)/_maximum, _negative_colors[i][ch], _negative_colors[i][ch]) for i in range(len(_positive_colors)-1,0,-1)] + [(0.5 if i==0 else 0.5 + (2**i)/_maximum, _positive_colors[i][ch], _positive_colors[i][ch]) for i in range(len(_positive_colors))]
+    color: [(0.5 - (4**(i-1))/_maximum, _negative_colors[i][ch], _negative_colors[i][ch]) for i in range(len(_negative_colors)-1,0,-1)] + [(0.5 if i==0 else 0.5 + (2**i)/_maximum, _positive_colors[i][ch], _positive_colors[i][ch]) for i in range(len(_positive_colors))]
         for ch,color in enumerate(['red','green','blue'])
 }
 
